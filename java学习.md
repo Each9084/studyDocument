@@ -193,7 +193,7 @@ try {
 
 ------
 
-✔ 有些 checked 异常是非常合理的（你真的应该处理）
+✔ 有些 checked 异常是非常合理的（真的应该处理）
 
 如：
 
@@ -216,7 +216,54 @@ Unchecked 异常适用于“代码无法恢复、必须中断执行”的场景(
 
 #### 关于 throw 和 throws
 
-"throw 关键字，用于主动地抛出异常；正常情况下，当除数为 0 的时候，程序会主动抛出 ArithmeticException；但如果我们想要除数为 1 的时候也抛出 ArithmeticException，就可以使用 throw 关键字主动地抛出异常。”
+1️⃣ `throw` —— 抛出一个具体的异常对象
+
+**作用**：在方法体内部**抛出一个异常实例**，用于告诉 JVM 或调用者“出现错误了”。
+
+```java
+public void divide(int a, int b) {
+    if (b == 0) {
+        throw new ArithmeticException("除数不能为0"); // 抛出异常对象
+    }
+    System.out.println(a / b);
+}
+
+```
+
+**特点**：
+
+1. `throw` 后面必须跟一个**异常对象**（如 `new ExceptionType()`）
+2. 抛出异常后，当前方法会立即停止执行
+3. 可以抛 **checked** 或 **unchecked** 异常
+
+
+
+2️⃣**`throws` —— 声明方法可能抛出的异常类型**
+
+**作用**：告诉方法的调用者“这个方法可能会抛出这些异常，需要处理”。
+
+```java
+public void readFile(String path) throws IOException {
+    FileReader fr = new FileReader(path); // 可能抛出 IOException
+}
+```
+
+**特点**：
+
+1. 用在**方法声明上**
+2. 后面跟异常类型，不是对象
+3. 只能用于**checked 异常**，unchecked 异常可不写
+
+
+
+3️⃣ throw vs throws 的核心区别
+
+| 对比点            | throw                | throws                                      |
+| ----------------- | -------------------- | ------------------------------------------- |
+| 用法位置          | 方法内部             | 方法声明                                    |
+| 后面跟什么        | 异常对象实例         | 异常类型                                    |
+| 是否终止方法      | 是，抛出异常立即终止 | 否，只是声明给调用者                        |
+| checked/unchecked | 都可                 | 主要是 checked 异常，unchecked 可以不用声明 |
 
 
 
