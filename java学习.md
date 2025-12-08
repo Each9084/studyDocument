@@ -250,6 +250,17 @@ try-catch之后用`finally`用于执行任何必要的清理操作，无论 `try
 3. `try` 块抛出异常，但没有被任何 `catch` 块捕获。
 4. 在 `try` 或 `catch` 块中执行了 `return`、`break` 或 `continue` 语句（但 `finally` 会在这些跳转发生之前执行）。
 
+
+
+使用 finally 块的时候需要遵守这些规则
+
+- finally 块前面必须有 try 块，不要把 finally 块单独拉出来使用。编译器也不允许这样做。
+- finally 块不是必选项，有 try 块的时候不一定要有 finally 块。
+- 如果 finally 块中的代码可能会发生异常，也应该使用 try-catch 进行包裹。
+- 即便是 try 块中执行了 return、break、continue 这些跳转语句，finally 块也会被执行。
+
+
+
 ---
 
 
