@@ -82,6 +82,30 @@ byte maxByte = 127
 
 
 
+### 基本数据类型
+
+Java 中的数据类型可分为 2 种：
+
+1）**基本数据类型**:
+
+基本数据类型是 Java 语言操作数据的基础，包括 boolean、char、byte、short、int、long、float 和 double，共 8 种。
+
+2）**引用数据类型**。
+
+除了基本数据类型以外的类型，都是所谓的引用类型。常见的有[数组](https://javabetter.cn/array/array.html)（对，没错，数组是引用类型，后面我们会讲）、class（也就是[类](https://javabetter.cn/oo/object-class.html)），以及[接口](https://javabetter.cn/oo/interface.html)（指向的是实现接口的类的对象）。
+
+
+
+![2basicDataType](../studyDoc/assets/javaAsstes/2basicDataType.png)
+
+[变量](https://javabetter.cn/oo/var.html)可以分为局部变量、成员变量、静态变量。
+
+当变量是局部变量的时候，必须得先初始化，否则编译器不允许你使用它。拿 int 来举例吧，看下图。
+
+
+
+
+
 ### Catch
 
 用于捕获 try 语句中的[异常](https://javabetter.cn/exception/gailan.html)(具体情况后面会讨论)。在 try 块中可能会抛出异常，而在 catch 块中可以捕获这些异常并进行处理。catch 块可以有多个，每个 catch 块可以捕获特定类型的异常。在 catch 块中，可以根据需要进行异常处理，例如输出错误信息、进行日志记录、恢复程序状态等。
@@ -114,7 +138,7 @@ checked 异常（检查型异常）在源代码里必须显式地捕获或者抛
 
 思维导图如下:
 
-![1exception and error](F:\学习\studyDoc\assets\javaAsstes\1exception and error.png)
+![1exception and error](../studyDoc/assets/javaAsstes/1exception and error.png)
 
 
 
