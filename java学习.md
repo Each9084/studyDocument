@@ -100,7 +100,44 @@ Java 中的数据类型可分为 2 种：
 
 [变量](https://javabetter.cn/oo/var.html)可以分为局部变量、成员变量、静态变量。
 
-当变量是局部变量的时候，必须得先初始化，否则编译器不允许你使用它。拿 int 来举例吧，看下图。
+当变量是局部变量的时候，必须得先初始化，否则编译器不允许你使用它。拿 
+
+
+
+#### 引用数据类型
+
+基本数据类型在作为成员变量和静态变量的时候有默认值，引用数据类型也有的（学完数组&字符串，以及面向对象编程后会更加清楚，这里先简单过一下）。
+
+[String](https://javabetter.cn/string/immutable.html) 是最典型的引用数据类型.
+
+是不是很好奇，为什么[数组](https://javabetter.cn/array/array.html)和[接口](https://javabetter.cn/oo/interface.html)也是引用数据类型啊？
+
+先来看数组：
+
+```java
+int [] arrays = {1,2,3};
+System.out.println(arrays);
+```
+
+arrays 是一个 int 类型的数组，对吧？打印结果如下所示：
+
+```java
+[I@723279cf
+```
+
+`[I` 表示数组是 int 类型的，@ 后面是十六进制的 hashCode——这样的打印结果太“人性化”了，一般人表示看不懂！为什么会这样显示呢？查看一下 `java.lang.Object` 类的 `toString()` 方法就明白了。
+
+```java
+public String toString() {
+        return getClass().getName() + "@" + Integer.toHexString(hashCode());
+    }
+```
+
+
+
+数组虽然没有显式定义成一个类，但它的确是一个对象，继承了祖先类 Object 的所有方法。那为什么数组不单独定义一个类来表示呢？就像字符串 String 类那样呢？
+
+一个合理的解释是 Java 将其隐藏了。假如真的存在一个 Array.java，我们也可以假想它真实的样子，它必须要定义一个容器来存放数组的元素，就像 String 类那样。
 
 
 
