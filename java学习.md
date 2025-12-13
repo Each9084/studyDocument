@@ -421,9 +421,39 @@ public void readFile(String path) throws IOException {
 
 
 
+## 数据与字符串
+
+### 数组的声明与初始化
+
+先来看第一种：
+
+```java
+int[] anArray;
+```
+
+再来看第二种：
+
+```java
+int anOtherArray[];
+```
 
 
 
+不同之处就在于中括号的位置，是跟在类型关键字的后面，还是跟在变量的名称的后面。前一种的使用频率更高一些，像 ArrayList 的源码中就用了第一种方式。
+
+同样的，数组的初始化方式也有多种，最常见的是：
+
+```java
+int[] anArray = new int[10];
+```
+
+
+
+
+
+
+
+## 其他
 
 ### `Class`(大写C)和`class`(小写c)的区别
 
