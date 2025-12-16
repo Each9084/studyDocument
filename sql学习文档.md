@@ -55,4 +55,4 @@ GROUP BY age_cut;
 
 ## SQL JOIN
 
-![sqlJoin](F:\学习\Sql学习\asset\sqlJoin.jpg)
+![sqlJoin](../studyDoc/assets/javaAsstes/sqlJoin.jpg)
