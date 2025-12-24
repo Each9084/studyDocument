@@ -68,3 +68,59 @@ HDFS是主从模式(中心化模式)
 | 步骤 步骤 4 | 反馈与结束 (Feedback & Complete) | 整个工作流直到所有任务都按顺序成功执行完毕，调度中心 宣布工作流完成。如果任何任务失败，调度中心负责根据策略进行 重试 或 告警。 | 流程控制：确保复杂业务流程的完整性、顺序性和可控性。     |
 
 **通俗总结：** 任务之间有严格的 **先后顺序** 和 **依赖关系**。有一个 **总指挥（调度中心）** 像交警一样，严格控制和检查每个步骤是否完成，确保整个流水线顺利、按部就班地走下去。
+
+
+
+
+
+## Yarn
+
+我们始终需要思考:
+
+1）如何管理集群资源？
+
+2）如何给任务合理分配资源？
+
+YARN是一个资源调度平台，负责为运算程序提供服务器运算资源，相当于一个分布式的操作系统平台，而MapReduce等运算程序则相当于运行于操作系统之上的应用程序。所以YARN负责调度,MapReduce在此基础上才能进行运算.
+
+YARN 作为一个资源管理、任务调度的框架，主要包含ResourceManager、NodeManager、ApplicationMaster和Container模块。
+
+
+
+![1yarnStructure](../studyDoc/assets/dataDevAssets/1yarnStructure.png)
+
+
+
+主角色:Resource Manager:整个集群资源的调度者,负责协调调度各个程序所需要的资源
+
+从角色:NodeManager:单个服务器的资源调度者,负责调度单个服务器上的资源提供给应用程序使用
+
+
+
+1）ResourceManager（RM）主要作用如下：
+
+处理客户端请求
+
+监控NodeManager
+
+启动或监控ApplicationMaster
+
+资源的分配与调度
+
+2）NodeManager（NM）主要作用如下：
+
+管理单个节点上的资源
+
+处理来自ResourceManager的命令
+
+处理来自ApplicationMaster的命令
+
+3）ApplicationMaster（AM）作用如下：
+
+为应用程序申请资源并分配给内部的任务
+
+任务的监督与容错
+
+4）Container
+
+Container是YARN中的资源抽象，它封装了某个节点上的多维度资源，如内存、CPU、磁盘、网络等。
