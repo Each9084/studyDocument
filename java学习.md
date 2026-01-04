@@ -155,9 +155,7 @@ public String toString() {
 
 
 
-![3heapAndStack](../studyDoc/assets/javaAsstes/3heapAndStack.png)
-
-
+![3heapAndStack](../studyDoc/assets/javaAssets/3heapAndStack.png)
 
 | **特性**     | **栈（Stack）**                                      | **堆（Heap）**                           |
 | ------------ | ---------------------------------------------------- | ---------------------------------------- |
@@ -201,7 +199,7 @@ checked 异常（检查型异常）在源代码里必须显式地捕获或者抛
 
 思维导图如下:
 
-![1exception and error](../studyDoc/assets/javaAsstes/1exception and error.png)
+![1exception and error](F:\学习\studyDoc\assets\javaAssets\1exception and error.png)
 
 
 

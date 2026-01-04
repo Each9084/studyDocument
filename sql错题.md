@@ -89,3 +89,141 @@ FROM salaries
 WHERE salary < (SLECT MAX(salary) FROM salaries))
 ```
 
+
+
+
+
+### **SQL220** 多个SELECT
+
+**查找在职员工自入职以来的薪水涨幅情况**
+
+
+
+**描述**
+
+有一个员工表employees简况如下:
+
+| emp_no | birth_date | first_name | last_name | gender | hire_date  |
+| ------ | ---------- | ---------- | --------- | ------ | ---------- |
+| 10001  | 1953-09-02 | Georgi     | Facello   | M      | 2001-06-22 |
+| 10002  | 1964-06-02 | Bezalel    | Simmel    | F      | 1999-08-03 |
+
+有一个薪水表salaries简况如下:
+
+| emp_no | salary | from_date  | to_date    |
+| ------ | ------ | ---------- | ---------- |
+| 10001  | 85097  | 2001-06-22 | 2002-06-22 |
+| 10001  | 88958  | 2002-06-22 | 9999-01-01 |
+| 10002  | 72527  | 1999-08-03 | 2000-08-02 |
+| 10002  | 72527  | 2000-08-02 | 2001-08-02 |
+
+请你查找在职员工自入职以来的薪水涨幅情况(注意这里强调的是在职员工)，给出在职员工编号emp_no以及其对应的薪水涨幅growth，并按照growth进行升序，以上例子输出为
+
+（注: to_date为薪资调整某个结束日期，或者为离职日期，to_date='9999-01-01'时，表示依然在职，无后续调整记录）
+
+| emp_no | growth |
+| ------ | ------ |
+| 10001  | 3861   |
+
+
+
+**<span style ="color:red">思路:</span>**
+
+<span style ="color:teal">首先就是需要找到`from_date`=`hire_date`的最初信息 然后再找到 ` to_date`为`9999-01-01`的最新信息,将最新-最初即为最终的增幅,并且可以过滤掉离职的情况</span>
+
+
+
+```mysql
+SELECT old.emp_no,(new.salary-old.salary) AS growth 
+FROM
+(SELECT e.emp_no,s.salary
+FROM employees e
+JOIN salaries s
+ON e.hire_date = s.from_date
+)old 
+JOIN 
+(
+SELECT e.emp_no,s.salary
+FROM employees e 
+    LEFT JOIN salaries s
+ON e.emp_no = s.emp_no
+WHERE s.to_date = '9999-01-01')new
+ON old.emp_no = new.emp_no
+ORDER BY growth asc;
+
+```
+
+
+
+### **SQL224**
+
+**获取员工其当前的薪水比其manager当前薪水还高的相关信息**
+
+描述
+
+有一个，部门关系表dept_emp简况如下:
+
+| emp_no | dept_no | from_date  | to_date    |
+| ------ | ------- | ---------- | ---------- |
+| 10001  | d001    | 1986-06-26 | 9999-01-01 |
+| 10002  | d001    | 1996-08-03 | 9999-01-01 |
+
+有一个部门经理表dept_manager简况如下:
+
+| dept_no | emp_no | from_date  | to_date    |
+| ------- | ------ | ---------- | ---------- |
+| d001    | 10002  | 1996-08-03 | 9999-01-01 |
+
+有一个薪水表salaries简况如下:
+
+| emp_no | salary | from_date  | to_date    |
+| ------ | ------ | ---------- | ---------- |
+| 10001  | 88958  | 2002-06-22 | 9999-01-01 |
+| 10002  | 72527  | 1996-08-03 | 9999-01-01 |
+
+获取员工其当前的薪水比其manager当前薪水还高的相关信息，
+
+第一列给出员工的emp_no，
+第二列给出其manager的manager_no，
+第三列给出该员工当前的薪水emp_salary,
+第四列给该员工对应的manager当前的薪水manager_salary
+
+以上例子输出如下:
+
+| emp_no | manager_no | emp_salary | manager_salary |
+| ------ | ---------- | ---------- | -------------- |
+| 10001  | 10002      | 88958      | 72527          |
+
+
+
+```sql
+--方法一笛卡尔积
+
+SELECT de.emp_no,dm.emp_no AS manager_no,s1.salary AS emp_salary,s2.salary AS manager_salary 
+FROM dept_emp de JOIN dept_manager dm ON dm.dept_no = de.dept_no
+JOIN salaries s1 ON s1.emp_no = de.emp_no
+JOIN salaries s2 ON s2.emp_no = dm.emp_no
+WHERE s1.salary > s2.salary 
+--
+SELECT emp.emp_no,manager.manager_no,emp.emp_salary,manager.manager_salary
+FROM
+(SELECT de.emp_no,de.dept_no,s.salary AS emp_salary
+FROM dept_emp de JOIN salaries s ON de.emp_no = s.emp_no
+WHERE de.emp_no NOT IN (SELECT emp_no FROM dept_manager) AND de.to_date = '9999-01-01' AND s.to_date = '9999-01-01'
+)emp JOIN 
+(
+    SELECT dm.emp_no AS manager_no,dm.dept_no,s.salary AS manager_salary
+    FROM dept_manager dm JOIN salaries s On dm.emp_no = s.emp_no
+    WHERE dm.to_date = '9999-01-01' AND s.to_date = '9999-01-01'
+)manager
+
+ON emp.dept_no = manager.dept_no
+WHERE emp.emp_salary > manager.manager_salary;
+
+
+
+
+
+
+```
+
