@@ -1,3 +1,222 @@
+## CREATE
+
+在 SQL 的世界里，`CREATE` 属于 **DDL（数据定义语言）**。它不仅仅是用来建表，更是整个数据库系统的“架构师”。
+
+要把 `CREATE` 讲透，我们需要从**数据库、表、索引、视图**这四个核心维度来系统梳理。
+
+------
+
+### 1. 顶层设计：CREATE DATABASE (建库)
+
+在建表之前，得先有个“仓库”。
+
+- **标准语法**：
+
+  ```SQL
+  CREATE DATABASE IF NOT EXISTS school_db 
+  CHARACTER SET utf8mb4 
+  COLLATE utf8mb4_general_ci;
+  ```
+
+- **关键细节**：
+
+  - **`IF NOT EXISTS`**：职业习惯。防止脚本因为库已存在而报错中断。
+  - **`CHARACTER SET utf8mb4`**：**必选**。这是目前最通用的编码，支持表情符号（Emoji）和各种生僻字。
+
+------
+
+### 2. 核心工程：CREATE TABLE (建表)
+
+这是用得最频繁的部分。一个完美的 `CREATE TABLE` 语句由三部分组成：**字段定义、约束、引擎配置**。
+
+#### ① 字段定义（数据类型选择）
+
+- **整数**：`TINYINT` (开关), `INT` (普通), `BIGINT` (海量数据/ID)。
+- **字符串**：`VARCHAR(n)` (变长，省空间), `CHAR(n)` (定长，查询快)。
+- **时间**：`DATETIME` (绝对时间), `TIMESTAMP` (带时区，自动更新)。
+
+#### ② 约束（数据规则）
+
+- **`PRIMARY KEY`**：唯一标识，不可重复。
+- **`NOT NULL`**：强制必填，避免后续复杂的 `NULL` 逻辑判断。
+- **`UNIQUE`**：保证某列唯一（如手机号、身份证）。
+- **`DEFAULT`**：设定默认值（如刚才聊到的 `(CURRENT_DATE)`）。
+
+#### ③ 存储引擎（物理特性）
+
+```SQL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+```
+
+- **InnoDB**：现代数据库 99% 的选择，支持事务（数据不丢失）和外键。
+
+------
+
+### 3. CREATE INDEX (建索引 ) 
+
+> 索引内容详见: **索引INDEX板块**
+
+表建好了，但查询慢？你需要给搜索频率高的列建索引。
+
+- **普通索引**：`CREATE INDEX idx_lastname ON actor(last_name);`
+- **唯一索引**：`CREATE UNIQUE INDEX uk_email ON users(email);`
+- **联合索引**：`CREATE INDEX idx_name ON actor(first_name, last_name);`
+- **主键索引**
+- **全文索引**
+
+> **比喻**：表是书的内容，索引就是书开头的“目录”。没有目录你得翻整本书（全表扫描），有了目录你直接跳到指定页。
+
+------
+
+### 4. 逻辑视图：CREATE VIEW (建视图)
+
+视图是一张“虚拟表”。它不存数据，只存一段 SQL 逻辑。
+
+- **场景**：你写了一个超复杂的 5 表连接查询。
+
+- **做法**：把这个查询封装成视图。
+
+  ```sql
+  CREATE VIEW view_actor_info AS 
+  SELECT a.first_name, a.last_name, s.salary 
+  FROM actor a JOIN salaries s ON a.actor_id = s.emp_no;
+  ```
+
+- **好处**：以后直接 `SELECT * FROM view_actor_info` 就像查单表一样简单，保护了原始表结构。
+
+------
+
+### 5. 职业级建表“三要素”规范
+
+在正规公司里，建表脚本通常必须包含以下内容：
+
+1. **自增主键**：一定要有 `id`，且建议使用 `BIGINT AUTO_INCREMENT`。
+2. **审计字段**：每个表都该有 `create_time` 和 `update_time`。
+3. **注释说明**：每个字段都必须写 `COMMENT`，否则三个月后你自己也看不懂。
+
+
+
+### 一些细节补充
+
+#### **①.更高级的“克隆”方式**
+
+如果想创建一个和原表**结构完全一致**（包括索引、注释、字符集）的新表，而不仅仅是选几个字段，可以使用 `LIKE` 语法：
+
+
+
+**方式 A：只克隆结构（不带数据）**
+
+这是职业开发最常用的备份表结构的方法。
+
+```sql
+CREATE TABLE actor_name LIKE actor;
+```
+
+- **优点**：它会把 `actor` 表的所有细节（主键、自增、索引）原封不动地复制过来。
+
+
+
+**方式 B：结构 + 数据 一步到位**
+
+如果你想连数据带结构一起复制，可以使用 `AS SELECT`。
+
+```sql
+CREATE TABLE actor_name AS 
+SELECT first_name, last_name FROM actor;
+```
+
+
+
+
+
+#### ②系统性理解：CREATE 的“派生”操作
+
+当使用 `CREATE ... SELECT` 或 `INSERT ... SELECT` 时，实际上是在做**数据的流动**。
+
+- **`INSERT INTO ... SELECT`**：要求目标表**必须先存在**。它像是一台往空盒子里装东西的机器。
+- **`CREATE TABLE ... AS SELECT`**：它会**一边建盒子一边装东西**。
+
+
+
+## ALTER
+
+**`ALTER TABLE`** 是一个功能极其丰富的指令，它允许开发者在不删除表的情况下，动态地调整表的结构。我们可以从 **列操作、约束操作、表级别操作** 三个维度来系统梳理。
+
+
+
+### 1.对“列”（Column）
+
+这是最常用的场景，就像给房子加个插座或者换个窗户。
+
+**增加列 (ADD)**：
+
+```sql
+ALTER TABLE actor ADD COLUMN phone VARCHAR(20) NOT NULL;
+```
+
+**修改列属性 (MODIFY)**： 改变字段的长度、数据类型或是否允许为空（不改名）。
+
+```sql
+ALTER TABLE actor MODIFY COLUMN first_name VARCHAR(100) NOT NULL;
+```
+
+**重命名列并修改属性 (CHANGE)**： MySQL 特有，可以同时改名和改属性。
+
+```sql
+ALTER TABLE actor CHANGE COLUMN first_name name_title VARCHAR(50);
+```
+
+**删除列 (DROP)**： **警告**：这是一个危险动作，删除后数据不可找回。
+
+```sql
+ALTER TABLE actor DROP COLUMN phone;
+```
+
+
+
+### 2. 对“约束/索引”（Constraints/Index）
+
+用于调整表的数据规则，比如主键、外键和索引。
+
+**添加/删除主键**：
+
+```sql
+ALTER TABLE actor ADD PRIMARY KEY (actor_id);
+ALTER TABLE actor DROP PRIMARY KEY;
+```
+
+**添加唯一约束/普通索引**：
+
+```sql
+ALTER TABLE actor ADD UNIQUE (email);
+ALTER TABLE actor ADD INDEX idx_last_name (last_name);
+```
+
+**删除索引**：
+
+```sql
+ALTER TABLE actor DROP INDEX idx_last_name;
+```
+
+
+
+### 3.对“表本身”的操作
+
+**重命名表 (RENAME)**：
+
+```sql
+ALTER TABLE actor RENAME TO top_actors;
+```
+
+**修改表选项（如字符集、注释、自增起始值）**：
+
+```sql
+ALTER TABLE actor COMMENT = '演员基本信息表';
+ALTER TABLE actor AUTO_INCREMENT = 1000; -- 下一个 ID 从 1000 开始
+```
+
+
+
 
 
 ## INSERT
@@ -279,6 +498,299 @@ GROUP BY dept_no;
 -- d001 | 张三; 李四; 王五
 -- d002 | 赵六; 孙七
 ```
+
+
+
+## 索引Index
+
+索引（Index）是数据库中**提升查询性能最核心的工具**。如果把数据库看作一本厚厚的字典，索引就是字典前面的“音序表”或“部首检字表”。
+
+要系统性地掌握索引，需要从**底层原理、分类、设计原则**三个维度来拆解。
+
+### 1. 底层原理：为什么索引快？
+
+数据库的数据是存在磁盘上的。如果没有索引，数据库为了找一条记录，必须进行**全表扫描（Full Table Scan）**，即把所有数据页从磁盘读入内存，挨个比对。
+
+**B+ 树（B+ Tree）：MySQL 索引的灵魂** MySQL（InnoDB引擎）主要使用 **B+ 树** 结构。
+
+- **非叶子节点**：只存储索引字段的值（类似书的目录页，只写着标题）。
+- **叶子节点**：存储实际的数据或主键（类似书的正文页）。
+- **优势**：树的高度通常只有 3-4 层。这意味着即使在千万级的数据中找一条记录，也只需要 **3 到 4 次磁盘 IO** 就能定位到。
+
+
+
+索引（Index）是数据库中**提升查询性能最核心的工具**。如果把数据库看作一本厚厚的字典，索引就是字典前面的“音序表”或“部首检字表”。
+
+要系统性地掌握索引，我们需要从**底层原理、分类、设计原则**三个维度来拆解。
+
+
+
+### 2. 索引的分类
+
+索引根据不同的维度有不同的叫法，容易搞混。我们分类梳理：
+
+#### ① 按功能逻辑分类
+
+- **普通索引 (Normal Index)**：只能通过**一个列**创建,是最基本的索引，没有任何限制,只是为了加速查询。。
+
+```sql
+-- 方式一：直接创建
+CREATE INDEX idx_last_name ON actor(last_name);
+
+-- 方式二：修改表结构
+ALTER TABLE actor ADD INDEX idx_last_name (last_name);
+```
+
+
+
+- **唯一索引 (Unique Index)**：列中的值必须唯一，但允许为 NULL。常用于手机号、身份证号。
+
+```sql
+-- 方式一：直接创建
+CREATE UNIQUE INDEX uk_first_name ON actor(first_name);
+
+-- 方式二：修改表结构
+ALTER TABLE actor ADD UNIQUE INDEX uk_first_name (first_name);
+```
+
+
+
+- **主键索引 (Primary Key)**：一种特殊的唯一索引，不允许有 NULL 值。通常在建表时指定，每张表只能有一个。
+
+```sql
+-- 通常在建表时直接指定
+ALTER TABLE actor ADD PRIMARY KEY (actor_id);
+```
+
+
+
+- **全文索引 (Full-text Index)**：用于在长文本（如 `TEXT` 类型）中搜索关键词，类似于搜索引擎(百度搜索）。
+
+```sql
+-- 仅支持 CHAR, VARCHAR, TEXT 类型
+ALTER TABLE actor ADD FULLTEXT INDEX ft_info (first_name, last_name);
+
+-- 查询时使用特殊语法：MATCH...AGAINST
+SELECT * FROM actor WHERE MATCH(first_name, last_name) AGAINST('NICK');
+```
+
+
+
+- **复合索引（Composite Index）**:在创建索引时，同时关联了**两个或两个以上**的列。
+
+```sql
+-- 顺序非常重要：先按 last_name 排，再按 first_name 排
+CREATE INDEX idx_full_name ON actor(last_name, first_name);
+```
+
+
+
+#### ② 按物理存储分类（重点）
+
+- **聚簇索引 (Clustered Index)**：
+  - **定义**：索引的叶子节点里直接存的就是**整行数据**。
+  - **特点**：一张表只能有一个（通常是主键）。
+- **二级索引 / 非聚簇索引 (Secondary Index)**：
+  - **定义**：叶子节点存的是索引字段的值 + **对应的主键 ID**。
+  - **回表查询**：如果你通过二级索引找数据，SQL 会先找到主键 ID，再回主键索引里找整行记录。这个过程叫“回表”。
+
+
+
+### 3.索引的使用
+
+**查看表中有哪些索引：**
+
+```sql
+SHOW INDEX FROM Table;
+```
+
+**删除索引：**
+
+```sql
+DROP INDEX idx_last_name ON Table;
+-- 或者
+ALTER TABLE actor DROP INDEX idx_last_name;
+```
+
+#### 强制索引:
+
+**查询优化器（Optimizer）** 会自动根据统计数据（数据量、区分度、IO 成本等）来决定使用哪个索引，或者干脆不走索引。但有的时候可能用户想要自行指定规则,那么就可以使用**` FORCE INDEX`**
+
+**用法:**
+
+强制索引紧跟在 `FROM` 子句中的表名之后：
+
+```sql
+SELECT * FROM actor 
+FORCE INDEX (idx_lastname) -- 强制告诉 MySQL 必须用这个索引
+WHERE last_name = 'GUINESS' AND first_name = 'PENELOPE';
+```
+
+
+
+**三种干预手段的对比**
+
+MySQL 提供了三个类似的指令，力度由轻到重：
+
+| **指令**         | **含义**                                                     | **力度**   |
+| ---------------- | ------------------------------------------------------------ | ---------- |
+| **USE INDEX**    | 建议 MySQL 使用这个索引，但它如果觉得全表扫描更快，可以不理你。 | 建议级     |
+| **IGNORE INDEX** | 强制 MySQL **禁止**使用这个索引。                            | 禁止级     |
+| **FORCE INDEX**  | 强制 MySQL 使用这个索引，除非该查询物理上根本没法用这个索引（比如没这列）。 | **强制级** |
+
+
+
+**一般场景使用建议：先诊断，再强制**
+
+如果发现查询慢，不要上来就 `FORCE INDEX`。标准的“手术流程”应该是：
+
+1. **执行 `EXPLAIN`**：看看 `type` 是不是 `ALL`，`possible_keys` 里有没有你预想的索引。
+2. **执行 `ANALYZE TABLE 表名`**：这会更新表的统计信息。很多时候，运行一下这个，优化器就自己变聪明了，不需要写强制索引。
+3. **检查索引区分度**：如果索引列本身重复值太多，强制索引也没意义。
+
+
+
+### 4. 索引的设计原则：哪些列该建索引？
+
+索引不是越多越好，因为索引本身占空间，且每次 `INSERT/UPDATE` 都要维护索引树，会变慢。
+
+**✅ 适合建索引的情况：**
+
+1. **经常出现在 `WHERE` 条件中的列**。
+2. **用于 `JOIN` 连接的列（外键）**。
+3. **经常需要 `ORDER BY`、`GROUP BY` 或 `DISTINCT` 的列**（因为索引本身就是排好序的）。
+4. **区分度高的列**（例如：身份证号适合，性别只有男女，就不太适合）。
+
+**❌ 不适合建索引的情况：**
+
+1. **数据量很小的表**（全表扫描可能比查索引还快）。
+2. **经常更新的列**。
+3. **查询中很少使用的列**。
+
+
+
+### 5. 复合索引与“最左匹配原则”
+
+如果你给 `(first_name, last_name)` 建了一个复合索引，它就像是一个**二级目录**。
+
+- **规则**：必须先查 `first_name`，才能用到索引。
+- **例子**：
+  - `WHERE first_name = 'Nick'` (✅ 走索引)
+  - `WHERE first_name = 'Nick' AND last_name = 'Wahlberg'` (✅ 走索引)
+  - `WHERE last_name = 'Wahlberg'` (❌ **不走索引**，因为你跳过了第一级目录)
+
+
+
+### 6. 性能调试神器：`EXPLAIN`
+
+想知道你的索引有没有生效？在 SQL 语句前加上 `EXPLAIN`。
+
+```sql
+EXPLAIN SELECT * FROM actor WHERE last_name = 'GUINESS';
+```
+
+- **type**: `ref` 或 `eq_ref` 说明索引生效了；`ALL` 说明在全表扫描。
+- **key**: 实际使用的索引名称。
+- **rows**: 预计扫描的行数，越小越好。
+
+
+
+## 视图（View）
+
+视图（View）是数据库设计中非常有用的“高级工具”。简单来说，**视图就是一张“虚拟表”**。它在数据库里不存储实际的数据，只存储一段 **SQL 查询逻辑**。
+
+当开发者查询视图时，数据库后台会自动跑一遍这段 SQL，然后把结果像表格一样呈现给开发者。
+
+
+
+### 1. 为什么要用视图？
+
+如果你发现自己每天都在写同一个复杂的 `JOIN` 查询，或者为了安全不想让新人看到员工的薪资细节，视图就是最佳解决方案。
+
+#### ① 简化复杂的查询（封装）
+
+如果你有一个 5 表关联的统计查询，代码长达 50 行。你可以把它存为视图。
+
+- **之前**：每次都要写那 50 行 SQL。
+- **之后**：`SELECT * FROM my_view;`（一行搞定）。
+
+#### ② 数据安全性（脱敏）
+
+你可以只给用户访问视图的权限，而不给原始表的权限。
+
+- **原始表**：有 `emp_no`, `name`, `salary`, `home_address`。
+- **视图**：只选 `name` 和 `dept_no`。这样敏感信息（薪资、地址）就被隔离了。
+
+#### ③ 逻辑独立性
+
+如果数据库后台改了表结构（比如把一个大表拆成了两个小表），你只需要修改视图的 SQL 定义，而前端程序的代码完全不需要动。
+
+
+
+### 2. 视图的创建与管理
+
+#### ① 创建视图
+
+语法非常直观：`CREATE VIEW 视图名 AS SELECT ...`
+
+```SQL
+CREATE VIEW v_actor_info AS
+SELECT a.actor_id, CONCAT(a.first_name, ' ', a.last_name) AS full_name, f.title
+FROM actor a
+JOIN film_actor fa ON a.actor_id = fa.actor_id
+JOIN film f ON fa.film_id = f.film_id;
+```
+
+#### ② 使用视图
+
+像查普通表一样查它：
+
+```SQL
+SELECT * FROM v_actor_info WHERE full_name LIKE 'A%';
+```
+
+#### ③ 修改和删除
+
+- **修改**：`CREATE OR REPLACE VIEW 视图名 AS ...`
+- **删除**：`DROP VIEW 视图名;`
+
+
+
+### 3. 视图的底层原理：它是如何工作的？
+
+当你执行 `SELECT * FROM v_actor_info` 时，数据库并不是去读一个叫 `v_actor_info` 的文件，而是执行了以下步骤：
+
+1. **查询改写**：数据库发现这是一个视图，于是把视图的定义拿出来。
+2. **合并 SQL**：把你当前的查询条件（比如 `WHERE id=1`）和视图原本的 SQL 合并在一起。
+3. **执行**：最终去原始表（物理表）里拿数据。
+
+### 4. 视图的“禁区”：能修改数据吗？
+
+这是一个常见的面试题。**答案是：视情况而定，但通常不建议。**
+
+- **可更新视图**：如果视图是简单的 `SELECT * FROM table`，你可以通过 `UPDATE` 视图来改原始表。
+- **不可更新视图**：如果视图包含以下任何内容，就**不能**修改数据：
+  - 聚合函数（`SUM`, `COUNT`, `AVG` 等）
+  - `DISTINCT`
+  - `GROUP BY`
+  - `UNION`
+  - 复杂的 `JOIN`
+
+> **最佳实践**：始终把视图当作**“只读”**的工具，数据的增删改（CUD）应该直接对原始表操作。
+
+
+
+### 5. 视图 vs. 物化视图 (Materialized View)
+
+在一些高级数据库（如 Oracle, PostgreSQL）中，还有一种东西叫**物化视图**。
+
+| **特性**   | **普通视图 (View)**            | **物化视图 (Materialized View)** |
+| ---------- | ------------------------------ | -------------------------------- |
+| **存储**   | 只存 SQL 语句                  | **存真实的计算结果**             |
+| **性能**   | 每次查询都要重新计算           | 查询极快（直接读结果）           |
+| **实时性** | 实时（原始表变了，视图立刻变） | 有延迟（需要手动或定时刷新）     |
+
+*注：MySQL 官方原生不支持物化视图，通常通过临时表或触发器手动模拟。*
 
 
 
