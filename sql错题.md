@@ -219,11 +219,113 @@ WHERE de.emp_no NOT IN (SELECT emp_no FROM dept_manager) AND de.to_date = '9999-
 
 ON emp.dept_no = manager.dept_no
 WHERE emp.emp_salary > manager.manager_salary;
+```
 
 
 
+**SQL241** **删除嵌套表**
+
+**删除emp_no重复的记录，只保留最小的id对应的记录。**
+
+删除emp_no重复的记录，只保留最小的id对应的记录。
+
+```sql
+CREATE TABLE IF NOT EXISTS titles_test (
+id int(11) not null primary key,
+emp_no int(11) NOT NULL,
+title varchar(50) NOT NULL,
+from_date date NOT NULL,
+to_date date DEFAULT NULL);
+
+insert into titles_test values ('1', '10001', 'Senior Engineer', '1986-06-26', '9999-01-01'),
+('2', '10002', 'Staff', '1996-08-03', '9999-01-01'),
+('3', '10003', 'Senior Engineer', '1995-12-03', '9999-01-01'),
+('4', '10004', 'Senior Engineer', '1995-12-03', '9999-01-01'),
+('5', '10001', 'Senior Engineer', '1986-06-26', '9999-01-01'),
+('6', '10002', 'Staff', '1996-08-03', '9999-01-01'),
+('7', '10003', 'Senior Engineer', '1995-12-03', '9999-01-01');
+```
+
+删除后titles_test表为(注：最后会select * from titles_test表来对比结果)
+
+| id   | emp_no | title           | from_date  | to_date    |
+| ---- | ------ | --------------- | ---------- | ---------- |
+| 1    | 10001  | Senior Engineer | 1986-06-26 | 9999-01-01 |
+| 2    | 10002  | Staff           | 1996-08-03 | 9999-01-01 |
+| 3    | 10003  | Senior Engineer | 1995-12-03 | 9999-01-01 |
+| 4    | 10004  | Senior Engineer | 1995-12-03 | 9999-01-01 |
 
 
 
+<span style="color:red">需要注意的点就是不能直接删除</span>
+
+❌错误示范
+
+```SQL
+DELETE FROM titles_test
+FROM WHERE id NOT IN (
+SELECT MIN(id) AS min_id FROM titles_test GROUP BY emp_no);
+```
+
+
+
+✅而是要加一个嵌套
+
+```SQL
+DELETE FROM titles_test WHERE id NOT IN(
+SELECT min_id FROM (
+SELECT MIN(id) AS min_id 
+FROM titles_test
+GROUP BY emp_no
+)t
+);
+```
+
+
+
+<span style="color:red">为了防止MYSQL死循环,你不能“一边删这棵树，一边又拿这棵树当梯子”。</span>
+
+**在子查询外面再套一层查询，并给它起个别名（Alias）。**
+
+这样 MySQL 就会先执行最里面的查询，把结果存入一个**临时表**（Temporary Table）。此时，外层的删除动作引用的就是这个临时表，而不是原表，限制就解除了。
+
+**为什么“套一层”就能解决？（物化临时表）**
+
+当把子查询改写成 `SELECT ... FROM (SELECT ... FROM A) AS tmp` 时，情况发生了本质变化：
+
+1. **强制物化（Materialization）**：MySQL 优化器在看到“嵌套子查询”加“别名”时，会认为这是一个独立的**临时表**。
+2. **先运行内层**：数据库会先完整地运行最里面的那条 `SELECT` 语句。
+3. **结果落地**：它把查询到的结果（比如那些 `min_id`）存放在内存的一张**临时表（Temporary Table）**里。
+4. **断开连接**：此时，原始表 `A` 的读取操作已经结束了。
+5. **执行删除**：外层的 `DELETE` 动作开始执行。它现在参考的是那张**已经算好的临时表**，而不是正在被删除的原始表。
+
+
+
+<span style="color:green">当然更加推荐的写法: DBA 更推荐使用 `JOIN` 语法，因为它能让优化器更清晰地处理多表逻辑，通常不需要创建完整的临时表：</span>
+
+```SQL
+DELETE t1 FROM titles_test t1
+JOIN (
+SELECT MIN(id) AS min_id,emp_no FROM titles_test
+GROUP BY emp_no
+)t2 ON t1.emp_no = t2.emp_no AND t1.id>t2.min_id;
+```
+
+
+
+这个就相当于左边有一个册子t1包含所有的原版titles_test 然后右边有一个找到最小id并进对emp_no进行分类的册子
+
+然后根据左侧册子一条一条逐行比对,如过左边的id大于右边,那么处决
+
+如果不是(t1.id=t2.min_id),那么保留.
+
+而如果想找最大也很简单:<span style="color:red">只需要改为小于号即可</span>
+
+```sql
+DELETE t1 FROM titles_test t1
+JOIN (
+SELECT MAX(id) AS max_id,emp_no FROM titles_test
+GROUP BY emp_no
+)t2 ON t1.emp_no = t2.emp_no AND t1.id < t2.max_id;
 ```
 
