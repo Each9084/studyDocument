@@ -417,6 +417,88 @@ public void readFile(String path) throws IOException {
 
 
 
+### 运算符
+
+#### 位运算符
+
+![4.calculaterCharacter](assets/javaAssets/4.calculaterCharacter.png)
+
+
+
+```java
+int a = 60, b = 13;
+System.out.println("a 的二进制：" + Integer.toBinaryString(a)); // 111100
+System.out.println("b 的二进制：" + Integer.toBinaryString(b)); // 1101
+
+int c = a & b;
+System.out.println("a & b：" + c + "，二进制是：" + Integer.toBinaryString(c));
+
+c = a | b;
+System.out.println("a | b：" + c + "，二进制是：" + Integer.toBinaryString(c));
+
+c = a ^ b;
+System.out.println("a ^ b：" + c + "，二进制是：" + Integer.toBinaryString(c));
+
+c = ~a;
+System.out.println("~a：" + c + "，二进制是：" + Integer.toBinaryString(c));
+
+c = a << 2;
+System.out.println("a << 2：" + c + "，二进制是：" + Integer.toBinaryString(c));
+
+c = a >> 2;
+System.out.println("a >> 2：" + c + "，二进制是：" + Integer.toBinaryString(c));
+
+c = a >>> 2;
+System.out.println("a >>> 2：" + c + "，二进制是：" + Integer.toBinaryString(c));
+```
+
+
+
+#### 前自增和后自增
+
+虽然在代码中 `i++` 和 `++i` 看起来只是位置不同，但在 **JVM 内部的执行过程**（也就是在**栈**中的操作顺序）是有本质区别的。
+
+简单来说：
+
+- **前自增 (`++i`)**：**先加 1，后赋值/使用**。（先改变自己，再参与运算）
+- **后自增 (`i++`)**：**先赋值/使用，后加 1**。（先参与运算，后改变自己）
+
+
+
+从内存中**局部变量表**和**操作数栈**的角度来看看它们发生了什么：
+
+**前自增 (`++i`)**
+
+1. 变量直接在局部变量表中加 $1$。
+2. 将加 $1$ 后的新值压入操作数栈。
+3. **结果：** 你拿到的是增加后的值。
+
+**后自增 (`i++`)**
+
+1. 先将变量当前的旧值压入操作数栈。
+2. 变量在局部变量表中加 $1$。
+3. **结果：** 你在当前表达式中拿到的还是旧值，但变量本身已经偷偷变大了。
+
+
+
+```java
+public static void main(String[] args) {
+    // 案例 1：前自增
+    int a = 10;
+    int b = ++a; 
+    System.out.println("a = " + a); // a = 11
+    System.out.println("b = " + b); // b = 11 (b 拿到了加完之后的值)
+
+    // 案例 2：后自增
+    int x = 10;
+    int y = x++;
+    System.out.println("x = " + x); // x = 11
+    System.out.println("y = " + y); // y = 10 (y 拿到了加之前的旧值)
+}
+```
+
+
+
 
 
 ## 数据与字符串

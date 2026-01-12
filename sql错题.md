@@ -329,3 +329,46 @@ GROUP BY emp_no
 )t2 ON t1.emp_no = t2.emp_no AND t1.id < t2.max_id;
 ```
 
+
+
+
+
+### **SQL245** 外键约束
+
+**在audit表上创建外键约束，其emp_no对应employees_test表的主键id**
+
+**描述**
+
+在audit表上创建外键约束，其emp_no对应employees_test表的主键id。
+
+(以下2个表已经创建了)
+
+> ```sql
+> CREATE TABLE employees_test(
+> ID INT PRIMARY KEY NOT NULL,
+> NAME TEXT NOT NULL,
+> AGE INT NOT NULL,
+> ADDRESS CHAR(50),
+> SALARY REAL
+> );
+> 
+> CREATE TABLE audit(
+> EMP_no INT NOT NULL,
+> create_date datetime NOT NULL
+> );
+> ```
+
+后台会判断是否创建外键约束，创建输出1，没创建输出0
+
+
+
+<span style="color:red">这个知识点关于 **外键约束**,由于这个表已经创建了 所以我们不能在创建情况下下去指定,所以要使用`ALTER`</span>
+
+```SQL
+ALTER TABLE audit
+ADD CONSTRAINT fk_audit
+FOREIGN KEY (EMP_no) REFERENCES employees_test(ID)
+ON DELETE CASCADE
+ON UPDATE CASCADE;
+```
+
