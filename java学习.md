@@ -96,7 +96,9 @@ Java 中的数据类型可分为 2 种：
 
 
 
-![2basicDataType](../studyDoc/assets/javaAsstes/2basicDataType.png)
+<img src="assets/javaAssets/2basicDataType.png" width="65%">
+
+
 
 [变量](https://javabetter.cn/oo/var.html)可以分为局部变量、成员变量、静态变量。
 
@@ -138,6 +140,86 @@ public String toString() {
 数组虽然没有显式定义成一个类，但它的确是一个对象，继承了祖先类 Object 的所有方法。那为什么数组不单独定义一个类来表示呢？就像字符串 String 类那样呢？
 
 一个合理的解释是 Java 将其隐藏了。假如真的存在一个 Array.java，我们也可以假想它真实的样子，它必须要定义一个容器来存放数组的元素，就像 String 类那样。
+
+
+
+
+
+#### 拓展:包装类
+
+在 Java 中，数据被分成了两大家族：**基本数据类型**（Primitive Types）和**包装类**（Wrapper Classes）。
+
+简单来说，包装类就是将基本数据类型“包装”起来，使其具有**对象**的特征。
+
+| **基本类型**                      | **对应的包装类**                          |
+| --------------------------------- | ----------------------------------------- |
+| `byte` / `short` / `int` / `long` | `Byte` / `Short` / **`Integer`** / `Long` |
+| `float` / `double`                | `Float` / `Double`                        |
+| `char`                            | **`Character`**                           |
+| `boolean`                         | `Boolean`                                 |
+
+**1.为什么需要设计包装类?**
+
+既然已经有了性能极高的“基本数据类型”，为什么还要费劲搞出一套“包装类”呢？核心原因有三个：
+
+**① 为了让基本类型“面向对象”**
+
+Java 的口号是“万物皆对象”，但基本类型（`int`, `double` 等）打破了这个规则。
+
+- **集合框架不支持基本类型：** 比如你常用的 `ArrayList`、`HashMap`。它们只能存储对象（`Object`）。如果你想存一串数字，你不能写 `ArrayList<int>`，必须写 `ArrayList<Integer>`。
+- **泛型限制：** 泛型（`T`）只能代表引用类型，不支持基本类型。
+
+
+
+**② 提供了更多实用的工具方法**
+
+基本类型只是一个单纯的“数字”，而包装类像是一个“工具箱”。
+
+- **类型转换：** 比如把字符串转成数字 `Integer.parseInt("123")`。
+- **进制转换：** `Integer.toHexString(255)` 转成十六进制。
+- **范围查询：** `Integer.MAX_VALUE` 告诉你 `int` 最大能存多少。
+
+
+
+**③ 处理 `null` 的需求（非常关键）**
+
+- **基本类型：** 必须有一个值（比如 `int` 默认是 $0$）。
+- **包装类：** 作为对象，它可以是 `null`。
+- **应用场景：** 在数据库里，一个“年龄”字段可能是空的。如果你用 `int` 接收，它会变成 $0$（误导）；如果你用 `Integer`，它就是 `null`，准确表达了“未知”。
+
+
+
+**为什么基本类型不需要 `new`？**
+
+基本数据类型（如 `int a = 10;`）是 Java 为了**性能**而保留的特例。
+
+- **存储位置：** 基本类型的值直接存储在**栈（Stack）**中。
+- **分配效率：** 栈内存的分配是极快的。当你声明 `int a = 10` 时，JVM 只是在栈里划出 4 个字节的空间，把数字 `10` 丢进去。
+- **不是对象：** 它们没有方法（你不能写 `a.toString()`），也没有复杂的类结构。因此，它们不需要通过 `new` 在堆中创建复杂的对象结构。
+
+
+
+**为什么包装类可以（且曾经必须）用 `new`？**
+
+包装类本质上是一个普通的 **Java 类**。既然是类，它就遵循对象的规则：
+
+- **存储位置：** 对象存储在**堆（Heap）**中。
+- **创建方式：** 在 Java 的规则里，创建一个存放在堆上的对象，标准做法就是使用 `new` 关键字（调用构造函数）。
+- **功能强大：** 包装类提供了很多基本类型没有的功能。
+  - **集合支持：** Java 的集合（如 `ArrayList`）只能存对象，不能存 `int`。所以你必须用 `ArrayList<Integer>`。
+  - **包含方法：** 你可以调用 `Integer.parseInt("123")` 等内置方法。
+  - **可以为 null：** 基本类型 `int` 必须有值（默认 0），但包装类 `Integer` 可以是 `null`，这在数据库开发中非常有用（表示“无数据”）。
+
+
+
+**为什么现在不推荐 `new` 了？**
+
+正如之前看到的报错，现在 Java 强烈建议不要写 `new Integer(10)`，而是写 `Integer.valueOf(10)` 或直接 `Integer i = 10`。
+
+这是因为：
+
+1. **`new` 每次都强制开辟新内存：** 即使两个 `new Integer(10)` 值一样，它们也是堆上两个不同的垃圾。
+2. **缓存池优化：** `Integer.valueOf(10)` 会优先从缓存池拿现成的对象（-128 到 127 之间）。这比 `new` 快得多，也省内存`Integer.valueOf(300)` 缓存池里没有，会自动 `new` 
 
 
 
@@ -501,9 +583,297 @@ public static void main(String[] args) {
 
 
 
-## 数据与字符串
+#### &|与&&||
 
-### 数组的声明与初始化
+**位运算符（&, |）** 和 **短路逻辑运算符（&&, ||）**
+
+**1. 核心区别：短路效应 (Short-Circuit)**
+
+这是它们最重要的区别。
+
+**&& 和 || （短路运算符）**
+
+它们非常“聪明”。如果左边的表达式已经能决定最终结果，它们就**不再计算右边的表达式**。
+
+- **`&&` (短路与)：** 如果左边为 `false`，结果必定为 `false`，所以**右边不再执行**。
+- **`||` (短路或)：** 如果左边为 `true`，结果必定为 `true`，所以**右边不再执行**。
+
+**& 和 | （逻辑/位运算符）**
+
+它们比较“死板”。无论左边的表达式结果是什么，**两边的表达式都会被完整计算**。
+
+
+
+**2. 为什么要用短路运算符？（安全性）**
+
+在 Java 开发中，短路运算符 `&&` 经常被用来防止 **空指针异常 (NullPointerException)**。
+
+**代码对比：**
+
+Java
+
+```java
+String s = null;
+
+// ✅ 使用 && (安全)
+if (s != null && s.length() > 0) {
+    // 因为 s != null 为 false，&& 直接跳过右边，程序不会报错
+}
+
+// ❌ 使用 & (程序崩溃)
+if (s != null & s.length() > 0) {
+    // 即使 s != null 为 false，它依然会去计算 s.length()
+    // 此时会对 null 调用方法，直接抛出 NullPointerException！
+}
+```
+
+
+
+**3. 它们还可以做位运算**
+
+这是 `&` 和 `|` 的另一副面孔：当操作数不是 `boolean` 而是 `int` 等数字时，它们变成了**位运算符**。
+
+- **`&` (按位与)：** 只有两个二进制位都是 1，结果才是 1。
+- **`|` (按位或)：** 只要有一个二进制位是 1，结果就是 1。
+
+**例子：**
+
+```java
+int a = 5; // 二进制: 0101
+int b = 3; // 二进制: 0011
+
+int resultAnd = a & b; // 结果: 0001 (即 1)
+int resultOr = a | b;  // 结果: 0111 (即 7)
+```
+
+*注意：`&&` 和 `||` 只能用于 `boolean` 类型，不能用于数字的位运算。*
+
+
+
+**4. 总结对比表**
+
+| **运算符** | **名称**  | **适用类型**      | **是否短路**      | **常用场景**                   |
+| ---------- | --------- | ----------------- | ----------------- | ------------------------------ |
+| **`&&`**   | 短路与    | 仅 `boolean`      | **是**            | 条件判断（最常用，安全高效）   |
+| **`&`**    | 逻辑/位与 | `boolean` 或 数字 | 否                | 位运算、必须执行两边逻辑的情况 |
+| **`        |           | `**               | 短路或            | 仅 `boolean`                   |
+| **`        | `**       | 逻辑/位或         | `boolean` 或 数字 | 否                             |
+
+
+
+**建议**
+
+在写业务逻辑（比如 `if` 语句）时，**请始终优先使用 `&&` 和 `||`**。这不仅能提高运行效率，还能避免很多潜在的逻辑错误。
+
+
+
+### 流程控制语句
+
+#### switch 语句
+
+switch 语句用来判断变量与多个值之间的相等性。变量的类型可以是：
+
+- byte、short、char、int：基本整数类型。
+- String：[字符串](https://javabetter.cn/string/immutable.html)类型。
+- 枚举类型：自定义的[枚举](https://javabetter.cn/basic-extra-meal/enum.html)类型。
+- 包装类：如 Byte、Short、Character、Integer。
+
+来看一下 switch 语句的格式：
+
+```java
+switch(变量) {    
+case 可选值1:    
+ // 可选值1匹配后执行的代码;    
+ break;  // 该关键字是可选项
+case 可选值2:    
+ // 可选值2匹配后执行的代码;    
+ break;  // 该关键字是可选项
+......    
+    
+default: // 该关键字是可选项     
+ // 所有可选值都不匹配后执行的代码 
+}
+```
+
+- 变量可以有 1 个或者 N 个值。
+- 值类型必须和变量类型是一致的，并且值是确定的。
+- 值必须是唯一的，不能重复，否则编译会出错。
+- break 关键字是可选的，如果没有，则执行下一个 case，如果有，则跳出 switch 语句。
+- default 关键字也是可选的。
+
+
+
+示例
+
+```java
+int age = 20;
+switch (age) {
+    case 20 :
+        System.out.println("上学");
+        break;
+    case 24 :
+        System.out.println("苏州工作");
+        break;
+    case 30 :
+        System.out.println("洛阳工作");
+        break;
+    default:
+        System.out.println("未知");
+        break; // 可省略
+}
+```
+
+
+
+当两个值要执行的代码相同时，可以把要执行的代码写在下一个 case 语句中，而上一个 case 语句中什么也没有，这种写法在 Java 中被称为 **"Case Fall-through"（case 穿透）**。来看一下示例：
+
+```java
+String name = "沉默王二";
+switch (name) {
+        //......
+case "沉默王二":
+case "沉默王三":
+    System.out.println("乒乓球爱好者");
+    break;
+```
+
+- 当 `name` 是 `"沉默王二"` 时：程序找到了第一个入口。由于这一行后面没有任何代码，它会**直接“掉”到**下一行。
+
+- 进入 `"沉默王三"` 的地盘：程序继续执行，直到它看到了 `System.out.println` 和最重要的 `break`。
+
+- **结果**：无论是王二还是王三，最终执行的都是同一段逻辑。
+
+
+
+这种“堆叠” case 的写法非常实用，主要优点是：
+
+- **减少重复代码**：当多个条件对应同一个结果时（比如：周一到周五都输出“工作日”），你不需要写五次同样的 `println`。
+- **逻辑清晰**：一眼就能看出哪些分类是属于同一组的。
+
+
+
+ **现代 Java 的新姿势 (Java 12+)**
+
+如果觉得这种堆叠方式还是有点啰嗦，现代 Java 提供了一种更简洁的 **Switch Expression（开关表达式）**，使用 `->` 符号，效果完全一样但更直观：
+
+```java
+// 这是 Java 12 之后推荐的写法
+switch (name) {
+    case "詹姆斯" -> System.out.println("篮球运动员");
+    case "穆里尼奥" -> System.out.println("足球教练");
+    case "沉默王二", "沉默王三" -> System.out.println("乒乓球爱好者"); // 直接逗号隔开
+    default -> throw new IllegalArgumentException("名字没有匹配项");
+}
+```
+
+*这种写法不需要写 `break`，因为它默认就是不穿透的。*
+
+
+
+#### 枚举(enumerate)
+
+```java
+public class SwitchEnumDemo {
+    public enum PlayerTypes {
+        TENNIS,
+        FOOTBALL,
+        BASKETBALL,
+        UNKNOWN
+    }
+
+    public static void main(String[] args) {
+        System.out.println(createPlayer(PlayerTypes.BASKETBALL));
+    }
+
+    private static String createPlayer(PlayerTypes playerType) {
+        switch (playerType) {
+            case TENNIS:
+                return "网球运动员费德勒";
+            case FOOTBALL:
+                return "足球运动员C罗";
+            case BASKETBALL:
+                return "篮球运动员詹姆斯";
+            case UNKNOWN:
+                throw new IllegalArgumentException("未知");
+            default:
+                throw new IllegalArgumentException(
+                        "运动员类型: " + playerType);
+
+        }
+    }
+}
+```
+
+但 switch 不支持 long、float、double 类型，这是因为：
+
+- long 是 64 位整数，不在 switch 一开始设计的范围内（32 位的 int 在大多数情况下就够用了）。
+- float 和 double 是浮点数，浮点数的比较不如整数简单和直接，存在精度误差。
+
+
+
+
+
+#### For循环
+
+**1.for-each**
+
+```java
+for(元素类型 元素 : 数组或集合){  
+// 要执行的代码
+}
+```
+
+例如:
+
+```java
+String [] strs = {"neil","leo","Nio"};
+
+        for(String str : strs){
+            System.out.println(str);
+        }
+```
+
+
+
+**2.无限 for 循环**
+
+```java
+for(;;){
+    System.out.println("xxx");
+}
+```
+
+一旦运行起来，就停不下来了，除非强制停止。
+
+
+
+#### continue
+
+当我们需要在 for 循环或者 （do）while 循环中立即跳转到下一个循环时，就可以使用 continue 关键字，通常用于跳过指定条件下的循环体，如果循环是嵌套的，仅跳过当前循环。
+
+来个示例：
+
+```java
+for (int i = 1; i <= 10; i++) {
+    if (i == 5) {
+        // 使用 continue 关键字
+        continue;// 5 将会被跳过
+    }
+    System.out.println(i);
+}
+```
+
+
+
+
+
+
+
+## 数组与字符串
+
+### 数组
+
+#### 数组的声明与初始化
 
 先来看第一种：
 
@@ -517,8 +887,6 @@ int[] anArray;
 int anOtherArray[];
 ```
 
-
-
 不同之处就在于中括号的位置，是跟在类型关键字的后面，还是跟在变量的名称的后面。前一种的使用频率更高一些，像 ArrayList 的源码中就用了第一种方式。
 
 同样的，数组的初始化方式也有多种，最常见的是：
@@ -527,9 +895,177 @@ int anOtherArray[];
 int[] anArray = new int[10];
 ```
 
+上面这行代码中使用了 new 关键字，这就意味着数组的确是一个对象，只有对象的创建才会用到 new 关键字，[基本数据类型](https://javabetter.cn/basic-grammar/basic-data-type.html)是不用的（基本数据的包装类型是可以 new 的，包装类型就是对象）。然后，我们需要在方括号中指定数组的长度。
+
+这时候，数组中的每个元素都会被初始化为默认值，int 类型的就为 0，Object 类型的就为 null。 不同数据类型的默认值不同，可以参照[之前的文章](https://javabetter.cn/basic-grammar/basic-data-type.html)。
+
+另外，还可以使用大括号的方式，直接初始化数组中的元素：
+
+```java
+int anOtherArray[] = new int[] {1, 2, 3, 4, 5};
+```
+
+这时候，数组的元素分别是 1、2、3、4、5，索引依次是 0、1、2、3、4，长度是 5。
+
+#### 数组的常用操作
+
+过索引来访问数组的元素
+
+```java
+anArray[0] = 10;
+```
+
+变量名，加上中括号，加上元素的索引，就可以访问到数组，通过“=”操作符可以对元素进行赋值。
+
+如果索引的值超出了数组的界限，就会抛出 `ArrayIndexOutOfBoundException`。由于数组的索引是从 0 开始，所以最大索引为 `length - 1`，不要使用超出这个范围内的索引访问数组，否则就会抛出数组越界的异常了。
+
+比如说你声明了一个大小为 10 的数组，你用索引 10 来访问数组，就会抛出这个异常。因为数组的索引是从 0 开始的，所以数组的最后一个元素的索引是 `length - 1`，也就是 9。
+
+当数组的元素非常多的时候，逐个访问数组就太辛苦了，所以需要通过遍历的方式。
+
+第一种，使用 for 循环：
+
+```java
+int anOtherArray[] = new int[] {1, 2, 3, 4, 5};
+for (int i = 0; i < anOtherArray.length; i++) {
+    System.out.println(anOtherArray[i]);
+}
+```
+
+通过 length 属性获取到数组的长度，然后从 0 开始遍历，就得到了数组的所有元素。
+
+第二种，使用 for-each 循环：
+
+```java
+int anOtherArray[] = new int[] {1, 2, 3, 4, 5};
+
+for (int i:anOtherArray){
+    System.out.println(i);
+}
+```
+
+如果不需要关心索引的话（意味着不需要修改数组的某个元素），使用 for-each 遍历更简洁一些。当然，也可以使用 while 和 do-while 循环
+
+#### **可变参数与数组**
+
+在 Java 中，**可变参数（Varargs，全称 Variable Arguments）** 是从 Java 5 开始引入的一个特性。它允许你在调用方法时，传入**任意数量**的参数（甚至是 0 个）。
+
+简单来说，可变参数让你的方法变得更“灵活”，不再被死板的参数个数所限制。
+
+在方法的声明中，在**数据类型**后面加上三个点（`...`）：
+
+```java
+public void 方法名(数据类型... 参数名) {
+    // 方法体
+}
+```
+
+假设我们要写一个求和的方法，如果不确定用户会传几个数字进来：
+
+```java
+public class VarargsExample {
+    public static void main(String[] args) {
+        // 可以传 2 个参数
+        System.out.println(sum(1, 2));
+        
+        // 可以传 5 个参数
+        System.out.println(sum(10, 20, 30, 40, 50));
+        
+        // 甚至可以不传参数
+        System.out.println(sum()); 
+    }
+
+    // int... 代表可以接收 0 到多个 int 类型的参数
+    public static int sum(int... numbers) {
+        int total = 0;
+        // 在方法内部，numbers 被当作【数组】来处理
+        for (int n : numbers) {
+            total += n;
+        }
+        return total;
+    }
+}
+```
 
 
 
+ **可变参数的本质：数组**
+
+当你看到 `int... numbers` 时，Java 编译器在底层其实偷偷地把它转换成了 `int[] numbers`。
+
+- **调用时**：编译器会自动把你传入的多个参数打包成一个数组。
+- **执行时**：方法体内部完全按照操作数组的方式来处理这些参数。
+
+
+
+**使用规则（必须遵守）**
+
+虽然可变参数很方便，但为了避免歧义，Java 对它有两条严格的限制：
+
+**① 一个方法只能有一个可变参数**
+
+不能写成 `public void test(int... a, String... b)`，这会导致编译器不知道哪些参数属于 a，哪些属于 b。
+
+**② 可变参数必须是参数列表的最后一个**
+
+如果方法有多个参数，可变参数必须放在最后。
+
+- **❌ 错误写法**：`public void test(int... nums, String name)` （编译器会报错）
+- **✅ 正确写法**：`public void test(String name, int... nums)`
+
+**原因**：Java 在匹配参数时是从左往右看的。如果可变参数在前面，它会“吞掉”后面所有的参数，导致后面的 `name` 拿不到值。
+
+------
+
+**5. 可变参数 vs 数组参数**
+
+你可能会问：“那我直接定义一个数组参数 `sum(int[] numbers)` 不行吗？”
+
+区别在于**调用的便利性**：
+
+- **数组参数**：调用时必须手动创建一个数组，如 `sum(new int[]{1, 2, 3})`。
+- **可变参数**：直接写 `sum(1, 2, 3)` 即可，代码更简洁、可读性更好。
+
+
+
+
+
+#### 数组与 List
+
+在 Java 中，数组与 List 关系非常密切。List 封装了很多常用的方法，方便我们对集合进行一些操作，而如果直接操作数组的话，有很多不便，因为数组本身没有提供这些封装好的操作，所以有时候我们需要把数组转成 List。
+
+> List 会在[集合框架](https://javabetter.cn/collection/arraylist.html)一节详细介绍，这里先来个开胃菜，方便大家回头过来复盘。
+
+最原始的方式，就是通过遍历数组的方式，一个个将数组添加到 List 中。
+
+```java
+int[] anArray = new int[] {1, 2, 3, 4, 5};
+
+List<Integer> aList = new ArrayList<>();
+for (int element : anArray) {
+    aList.add(element);
+}
+```
+
+更优雅的方式是通过 [Arrays 类](https://javabetter.cn/common-tool/arrays.html)（戳链接了解详情）的 `asList()` 方法：
+
+```JAVA
+List<Integer> aList = Arrays.asList(anArray);
+```
+
+不过需要注意的是，Arrays.asList 的参数需要是 Integer 数组，而 anArray 目前是 int 类型。
+
+可以这样写：
+
+```JAVA
+List<Integer> aList1 = Arrays.asList(1, 2, 3, 4, 5);
+```
+
+或者换另外一种方式
+
+```JAVA
+List<Integer> aList = Arrays.stream(anArray).boxed().collect(Collectors.toList());
+```
 
 
 
