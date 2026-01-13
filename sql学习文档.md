@@ -138,6 +138,140 @@ SELECT first_name, last_name FROM actor;
 
 
 
+## UPDATE
+
+`UPDATE` 语句是用于修改数据库表中**已存在记录**的指令。如果说 `INSERT` 是“增加”，`DELETE` 是“移除”，那么 `UPDATE` 就是“整容”和“修正”。
+
+为了让你系统性地掌握它，我们将从**基础语法、条件控制、多表联动、以及实战安全规则**四个维度展开讲解。
+
+### 1. 基础语法：精准修改
+
+`UPDATE` 的基本逻辑是：**定位行 → 修改列 → 写入新值**。
+
+```sql
+UPDATE 表名
+SET 列1 = 值1, 列2 = 值2, ...
+WHERE 条件;
+```
+
+- **`SET`**：指定要更新的列名。你可以同时修改多列，用逗号隔开。
+- **`WHERE`**：极其重要！它决定了哪些行会被修改。**如果不写 `WHERE`，全表的所有数据都会被修改。**
+
+**示例：** 将工号为 `1001` 的员工薪水调为 `5000`，职位改为 `Manager`。
+
+```SQL
+UPDATE employees
+SET salary = 5000, job_title = 'Manager'
+WHERE emp_id = 1001;
+```
+
+
+
+### 2. 进阶用法：动态计算
+
+`UPDATE` 不仅可以填入死数据，还可以利用原有的值进行动态计算。
+
+- **原值累加**：
+
+  ```SQL
+  -- 给研发部所有员工涨薪 10%
+  UPDATE employees 
+  SET salary = salary * 1.1 
+  WHERE dept_id = 'RD';
+  ```
+
+- **配合函数**：
+
+  ```SQL
+  -- 将所有演员的名字转换为大写
+  UPDATE actor 
+  SET first_name = UPPER(first_name);
+  ```
+
+------
+
+### 3. 多表联动更新（Update Join）
+
+当你需要根据**另一张表**的信息来更新当前表时，单表 `UPDATE` 就不够用了。这时需要结合 `JOIN`。
+
+**场景：** 根据“折扣表（discounts）”里的比例，更新“产品表（products）”的现价。
+
+```SQL
+UPDATE products p
+INNER JOIN discounts d ON p.category_id = d.category_id
+SET p.price = p.price * d.discount_rate
+WHERE d.status = 'active';
+```
+
+- **逻辑**：先通过 `JOIN` 将两张表关联，然后根据关联后的结果集进行针对性修改。
+
+------
+
+### 4. 嵌套子查询更新
+
+有时候我们需要根据子查询的结果来定位更新目标。
+
+**注意（MySQL 限制）**：MySQL 不允许在 `UPDATE` 的子查询中直接引用目标表。
+
+- **❌ 报错写法**：`UPDATE A SET col = 1 WHERE id = (SELECT MAX(id) FROM A);`
+
+- **✅ 修正写法（套娃法）**：
+
+  ```SQL
+  UPDATE titles_test 
+  SET title = 'Senior' 
+  WHERE id = (
+      SELECT max_id FROM (
+          SELECT MAX(id) AS max_id FROM titles_test
+      ) AS tmp
+  );
+  ```
+
+------
+
+### 5. 执行原理与性能建议
+
+1. **行级锁（Row Locking）**：
+
+   - 在 InnoDB 引擎中，如果你通过**索引列**（如主键）进行 `UPDATE`，数据库只会锁定那几行（行锁）。
+   - 如果你没有用到索引，数据库可能会升级为**表锁**，导致整个表在更新期间无法被其他人访问。
+
+2. **事务回滚**： `UPDATE` 操作通常放在事务中，防止操作中途出错无法恢复：
+
+   ```SQL
+   BEGIN; -- 开始
+   UPDATE ...;
+   ROLLBACK; -- 发现改错了，撤销
+   COMMIT; -- 确认无误，提交
+   ```
+
+3. **大表分批处理**： 如果要更新 1000 万行数据，一次性执行会导致长时间锁表。**建议分批更新**：
+
+   ```SQL
+   -- 配合 LIMIT 每次更新 5000 条
+   UPDATE orders SET status = 'closed' WHERE order_date < '2020-01-01' LIMIT 5000;
+   ```
+
+------
+
+### 6. 职业级安全规则（保命准则）
+
+在真实的生产环境中，直接写 `UPDATE` 是非常危险的。请遵循以下流程：
+
+1. **先改 SELECT**：在执行 `UPDATE` 前，先把 `UPDATE` 换成 `SELECT *` 运行一遍，看看查出来的行是不是你想改的那几行。
+
+2. **检查 Affected Rows**：执行后，查看数据库返回的“受影响行数”。如果只想改 1 行却返回了 10000 行，说明 `WHERE` 条件写错了，赶紧检查！
+
+3. **开启安全模式**：
+
+   ```SQL
+   SET sql_safe_updates = 1; 
+   ```
+
+   开启后，如果你写的 `UPDATE` 语句没有带 `WHERE` 条件或者没有用到主键索引，MySQL 会拒绝执行，防止误删/误改全表。
+
+
+
 ## ALTER
 
 **`ALTER TABLE`** 是一个功能极其丰富的指令，它允许开发者在不删除表的情况下，动态地调整表的结构。我们可以从 **列操作、约束操作、表级别操作** 三个维度来系统梳理。
@@ -508,55 +642,6 @@ SELECT CONCAT('张', NULL, '三');
 SELECT CONCAT_WS(' ', last_name, first_name) AS Name FROM employees;
 ```
 
-在 MySQL 中，`CONCAT` 系列函数是处理字符串拼接的核心工具。虽然看起来简单，但在处理**空值（NULL）**、**分隔符**以及**复杂报表**时，有非常具体的逻辑。
-
-我们可以把 MySQL 的拼接功能系统性地拆解为三个部分：
-
-------
-
-### 1. 基础拼接：`CONCAT(s1, s2, ...)`
-
-这是最常用的基本函数，可以将任意数量的字符串连接在一起。
-
-- **语法**：`CONCAT(string1, string2, ...)`
-- **特性**：
-  - 它可以接受多个参数（不仅仅是两个）。
-  - **致命弱点**：只要参数中有一个是 `NULL`，整个函数的结果就会变成 `NULL`。
-
-**❌ 潜在坑点演示：** 假设某员工没有中间名（Middle Name 为 NULL）：
-
-SQL
-
-```
-SELECT CONCAT('张', NULL, '三'); 
--- 结果是 NULL，而不是 '张三'。这就是为什么很多初学者发现数据“无故消失”的原因。
-```
-
-------
-
-### 2. 智能分隔拼接：`CONCAT_WS(separator, s1, s2, ...)`
-
-`WS` 是 **"With Separator"**（带分隔符）的缩写。这是处理格式化输出（如姓名、地址）的最佳选择。
-
-- **语法**：`CONCAT_WS(分隔符, 字符串1, 字符串2, ...)`
-- **三大优势**：
-  1. **统一分隔**：你只需要在第一个参数写一次空格（或逗号），后面所有的间隙都会自动填充该符号。
-  2. **自动处理 NULL**：它会**自动忽略** NULL 值，而不会让结果变成 NULL。
-  3. **简洁**：不需要像 `CONCAT` 那样反复写空格。
-
-**✅ 实战演示：**
-
-SQL
-
-```
--- 即使 last_name 是 NULL，它也会正常显示 first_name，不会报错
-SELECT CONCAT_WS(' ', last_name, first_name) AS Name FROM employees;
-```
-
-
-
-
-
 ### 3. 分组聚合拼接：`GROUP_CONCAT()`
 
 这是 `CONCAT` 的**高级形态**，通常配合 `GROUP_BY` 使用。它能把**多行**的数据拼接成**一行**里的一个字符串。
@@ -577,6 +662,37 @@ GROUP BY dept_no;
 -- d001 | 张三; 李四; 王五
 -- d002 | 赵六; 孙七
 ```
+
+
+
+## SUBSTR
+
+`SUBSTR`（或 `SUBSTRING`）是处理文本的核心工具。要系统性掌握它，需要记住三个核心参数：**数据源、起始位置、截取长度**。
+
+**基本语法:**
+
+$$SUBSTR(\text{string}, \text{start}, [\text{length}])$$
+
+
+
+**起始位置（start）的正负规律**
+
+这是最容易混淆的地方：
+
+- **正数索引 (1, 2, 3...)**：从**左**往右数。
+  - `SUBSTR('ABCDE', 2)` $\rightarrow$ 'BCDE'（从第 2 个字母 B 开始）
+- **负数索引 (-1, -2, -3...)**：从**右**往左数。
+  - `SUBSTR('ABCDE', -2)` $\rightarrow$ 'DE'（从倒数第 2 个字母 D 开始）
+
+
+
+**长度参数（length）**
+
+- 如果省略：截取到字符串的末尾。
+- 如果指定：只截取指定的字符个数。
+  - `SUBSTR('ABCDE', 2, 2)` $\rightarrow$ 'BC'
+
+
 
 
 
@@ -1074,6 +1190,97 @@ END IF;
 
 
 
+## LIMIT 与 OFFSET
+
+`LIMIT` 和 `OFFSET` 是处理大规模数据集时最常用的两个关键字。它们的主要功能是**数据切片**，最典型的应用场景就是网页上的**分页显示**。
+
+### 1. 基础定义
+
+- **`LIMIT`**：限制返回结果的最大行数（“我要多少条”）。
+- **`OFFSET`**：跳过指定数量的行（“从哪里开始”）。
+
+#### 语法结构：
+
+```SQL
+SELECT 列名 FROM 表名
+ORDER BY 某列 -- 强烈建议配合排序使用，否则结果顺序是不可控的
+LIMIT 数量 OFFSET 偏移量;
+```
+
+------
+
+### 2. 常见用法与写法
+
+不同的数据库（如 MySQL 和 PostgreSQL）对语法的支持略有不同，但逻辑是一致的。
+
+#### ① 标准写法
+
+```SQL
+-- 获取第 6 到第 15 条记录（跳过前 5 条，取 10 条）
+SELECT * FROM actor ORDER BY actor_id LIMIT 10 OFFSET 5;
+```
+
+#### ② MySQL 的简写（逗号法）
+
+MySQL 支持一种更简洁但容易混淆的写法：`LIMIT 偏移量, 数量`。
+
+```SQL
+-- 注意：这里第一个数字是 OFFSET，第二个是 LIMIT
+SELECT * FROM actor LIMIT 5, 10; -- 同样是跳过 5 条，取 10 条
+```
+
+------
+
+### 3. 分页逻辑的计算公式
+
+如果你在开发一个网页，用户点击“第 `n` 页”，每页显示 `pageSize` 条数据，你的 SQL 应该这样写：
+
+- **LIMIT** = `pageSize`
+- **OFFSET** = `(n - 1) * pageSize`
+
+| **页码 (n)** | **每页数量 (pageSize)** | **LIMIT** | **OFFSET** |
+| ------------ | ----------------------- | --------- | ---------- |
+| 第 1 页      | 10                      | 10        | 0          |
+| 第 2 页      | 10                      | 10        | 10         |
+| 第 3 页      | 10                      | 10        | 20         |
+
+------
+
+### 4. 深度原理与性能陷阱（面试常考）
+
+这是 `OFFSET` 最坑的地方：**深分页问题**。
+
+当你执行 `LIMIT 10 OFFSET 1000000` 时，你可能以为数据库会直接跳到第 100 万行。**错！**
+
+底层逻辑：
+
+数据库必须先把前 100 万条数据都读出来，然后扔掉，最后只给你剩下的 10 条。
+
+- **后果**：随着页码越来越往后，查询速度会越来越慢，IO 压力剧增。
+
+#### 🚀 优化方案：
+
+1. **子查询优化**：先通过覆盖索引（只查 ID）快速定位偏移后的 ID，再回表查详情。
+
+2. **“上一页最后 ID”法**：不使用 `OFFSET`，而是记录上一页最后一条记录的 ID（假设 ID 是连续递增的）。
+
+   ```sql
+   -- 查找 ID 大于 1000000 的前 10 条
+   SELECT * FROM actor WHERE actor_id > 1000000 LIMIT 10;
+   ```
+
+   *这种方式无论翻到多少页，速度都极快（走索引扫描）。*
+
+------
+
+### 5. 注意事项
+
+1. **必须配合 `ORDER BY`**：如果没有排序，数据库返回的“前 5 条”可能是随机的（取决于物理存储顺序），这会导致分页数据重复或遗漏。
+2. **执行顺序**：在 SQL 执行生命周期中，`LIMIT` 和 `OFFSET` 是**最后一步**执行的。它发生在 `WHERE`、`GROUP BY`、`HAVING` 和 `ORDER BY` 之后。
+3. **不同数据库差异**：
+   - **Oracle**：旧版使用 `ROWNUM` 伪列，新版支持 `OFFSET n ROWS FETCH NEXT m ROWS ONLY`。
+   - **SQL Server**：使用 `TOP` 或 `OFFSET...FETCH`。
+
 
 
 ## SQL的书写顺序（Syntax Order）
@@ -1101,8 +1308,6 @@ SQL 不是从上到下执行的，而是按照这个顺序：
 
 
 值得注意的是:**在大多数 SQL 数据库中，GROUP BY 确实在 SELECT 之前执行，但 GROUP BY 子句中可以使用 SELECT 中定义的别名，这是一个语法糖。**
-
-例如:
 
 ```mysql
 SELECT 

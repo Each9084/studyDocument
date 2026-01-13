@@ -372,3 +372,120 @@ ON DELETE CASCADE
 ON UPDATE CASCADE;
 ```
 
+
+
+### **SQL250** LENGTH REPLACE
+
+**查找字符串中逗号出现的次数**
+
+中等 通过率：60.96% 时间限制：1秒 空间限制：32M
+
+知识点[SQL](https://www.nowcoder.com/exam/oj?tag=3427)
+
+**描述**
+
+现有strings表如下：
+
+- id指序列号；
+- string列中存放的是字符串，且字符串中仅包含数字、字母和逗号类型的字符。
+
+| id   | string         |
+| ---- | -------------- |
+| 1    | 10,A,B,C,D     |
+| 2    | A,B,C,D,E,F    |
+| 3    | A,11,B,C,D,E,G |
+
+请你统计每个字符串中逗号出现的次数cnt。
+
+以上例子的输出结果如下：
+
+| id   | cnt  |
+| ---- | ---- |
+| 1    | 4    |
+| 2    | 5    |
+| 3    | 6    |
+
+<span style="color:teal">这道题的思路就是 我们要统计逗号的次数 = 总长度 - 没有逗号的次数,通过`LENGTH`可以统计长度,但是对于符号却没有相关的方法,那么我们通过`REPLACE`将`,`替换为空 即是没有逗号的长度</span>
+
+```sql
+SELECT id,(LENGTH(string)-LENGTH(REPLACE(string,",",""))) AS cnt
+FROM strings;
+```
+
+
+
+<span style="color:blue">拓展:如果统计的是“单词”个数怎么办？</span>
+
+比如 `10,A,B` 有 3 个元素。
+
+- **思维推演**：单词数 = 逗号数 + 1。
+- **代码**：`LENGTH(string) - LENGTH(REPLACE(string, ',', '')) + 1`。
+
+<span style="color:blue"> 如果字符串里有中文怎么办？</span>
+
+- **思维推演**：`LENGTH` 算的是字节，`CHAR_LENGTH` 算的是字符。在 UTF-8 下，一个中文占 3 字节。
+- **系统经验**：处理文本内容统计时，优先使用 `CHAR_LENGTH` 以增强代码的健壮性。
+
+<span style="color:blue">如果需要统计的是多个字符（比如统计 "AB" 出现了几次）？</span>
+
+**思维推演**：差值不能直接等于次数，因为 "AB" 长度是 2。
+
+**公式**：`(原长 - 替换后长度) / 目标子串的长度`。
+
+
+
+### **SQL251 SUBSTR**
+
+**获取employees中的first_name**
+
+中等 通过率：63.88% 时间限制：1秒 空间限制：32M
+
+知识点[SQL](https://www.nowcoder.com/exam/oj?tag=3427)
+
+## 描述
+
+现有employees表如下：
+
+| emp_no | birth_date | first_name | last_name | gender | hire_date  |
+| ------ | ---------- | ---------- | --------- | ------ | ---------- |
+| 10001  | 1953-09-02 | Georgi     | Facello   | M      | 1986-06-26 |
+| 10002  | 1964-06-02 | Bezalel    | Simmel    | F      | 1985-11-21 |
+| 10003  | 1959-12-03 | Parto      | Bamford   | M      | 1986-08-28 |
+| 10004  | 1954-05-01 | Christian  | Koblick   | M      | 1986-12-01 |
+| 10005  | 1955-01-21 | Kyoichi    | Maliniak  | M      | 1989-09-12 |
+| 10006  | 1953-04-20 | Anneke     | Preusig   | F      | 1989-06-02 |
+| 10007  | 1957-05-23 | Tzvetan    | Zielinski | F      | 1989-02-10 |
+| 10008  | 1958-02-19 | Saniya     | Kalloufi  | M      | 1994-09-15 |
+| 10009  | 1952-04-19 | Sumant     | Peac      | F      | 1985-02-18 |
+| 10010  | 1963-06-01 | Duangkaew  | Piveteau  | F      | 1989-08-24 |
+| 10011  | 1953-11-07 | Mary       | Sluis     | F      | 1990-01-22 |
+
+请你输出employees中的first_name，按照first_name最后两个字符升序输出。
+
+以上示例数据的输出如下：
+
+| first_name |
+| ---------- |
+| Christian  |
+| Tzvetan    |
+| Bezalel    |
+| Duangkaew  |
+| Georgi     |
+| Kyoichi    |
+| Anneke     |
+| Sumant     |
+| Mary       |
+| Parto      |
+| Saniya     |
+
+
+
+<SPAN STYLE="COLOR:RED">这道题唯一的考点在于如何处理最后两个字符 答案很简单 `substr`,`substr`可以截取对应的内容</SPAN>
+
+```sql
+SELECT first_name FROM employees ORDER BY SUBSTR(first_name,-2);
+
+--这种也没有区别,因为-2本身就是从右往左起数2位,然后处理倒数第二位到末尾,所以本身就是已经处理了2的内容
+SELECT first_name FROM employees ORDER BY SUBSTR(first_name,-2,2);
+```
+
