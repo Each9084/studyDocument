@@ -1067,6 +1067,131 @@ List<Integer> aList1 = Arrays.asList(1, 2, 3, 4, 5);
 List<Integer> aList = Arrays.stream(anArray).boxed().collect(Collectors.toList());
 ```
 
+这又涉及到了 [Java 流](https://javabetter.cn/java8/stream.html)的知识，戳链接了解。
+
+还有一个需要注意的是，Arrays.asList 方法返回的 ArrayList 并不是 `java.util.ArrayList`，它其实是 Arrays 类的一个内部类：
+
+```java
+private static class ArrayList<E> extends AbstractList<E>
+        implements RandomAccess, java.io.Serializable{}
+```
+
+如果需要添加元素或者删除元素的话，需要把它转成 `java.util.ArrayList`。
+
+```java
+new ArrayList<>(Arrays.asList(anArray));
+```
+
+Java 8 新增了 [Stream 流](https://javabetter.cn/java8/stream.html)的概念，这就意味着我们也可以将数组转成 Stream 进行操作。
+
+```java
+String[] anArray = new String[] {"沉默王二", "一枚有趣的程序员", "好好珍重他"};
+Stream<String> aStream = Arrays.stream(anArray);
+```
+
+
+
+#### 数组的排序与查找
+
+如果想对数组进行排序的话，可以使用 Arrays 类提供的 `sort()` 方法。
+
+- 基本数据类型按照升序排列
+- 实现了 Comparable 接口的对象按照 `compareTo()` 的排序
+
+来看第一个例子：
+
+```java
+int[] anArray = new int[] {5, 2, 1, 4, 8};
+Arrays.sort(anArray);
+```
+
+排序后的结果如下所示：
+
+```
+[1, 2, 4, 5, 8]
+```
+
+<span style = "color:red">注意:此时`anArray` 变量指向的那块**堆内存区域**里的数据被彻底挪动了,所以执行了`Arrays.sort`后`anArray`内部就已经是[1,2,4,5,8]了</span>
+
+
+
+来看第二个例子：
+
+```sql
+String[] yetAnotherArray = new String[] {"A", "E", "Z", "B", "C"};
+Arrays.sort(yetAnotherArray, 1, 3,
+                Comparator.comparing(String::toString).reversed());
+```
+
+只对 1-3 位置上的元素进行反序，所以结果如下所示：
+
+```java
+[A, Z, E, B, C]
+```
+
+
+
+------
+
+<span style="color:teal">知识点</span>
+
+`Arrays.sort()` 不仅能排整个数组，还能排**指定的区间**。
+
+- **参数解析**：`Arrays.sort(数组, fromIndex, toIndex, ...)`
+- **你的代码**：`1, 3` 表示从索引 `1` 开始，到索引 `3` **之前**结束。
+- **规则**：**左闭右开** $[1, 3)$。也就是说，它只处理索引为 `1` 和 `2` 的元素，索引 `3` 及其之后的元素保持不动。
+
+
+
+**`Comparator.comparing` (比较器)**
+
+这是 Java 8 引入的函数式编程写法，用于定义**排序规则**。
+
+- `String::toString`：这是一个**方法引用**(匿名内部类的终极版)。它告诉 Java：“请使用 String 对象的 `toString()` 方法返回的结果来进行比较。”
+- 虽然对字符串来说直接比较就行，但这种写法在处理复杂对象（比如 `User::getName`）时非常强大。
+
+
+
+**`.reversed()` (逆序排列)**
+
+默认情况下，`Arrays.sort` 是**升序**（A -> Z）。
+
+- 加上 `.reversed()` 后，排序规则反转，变成了**降序**（Z -> A）。
+
+---
+
+
+
+有时候，我们需要从数组中查找某个具体的元素，最直接的方式就是通过遍历的方式：
+
+```sql
+int[] anArray = new int[] {5, 2, 1, 4, 8};
+for (int i = 0; i < anArray.length; i++) {
+    if (anArray[i] == 4) {
+        System.out.println("找到了 " + i);
+        break;
+    }
+}
+```
+
+上例中从数组中查询元素 4，找到后通过 break 关键字退出循环。
+
+如果数组提前进行了排序，就可以使用二分查找法，这样效率就会更高一些。`Arrays.binarySearch()` 方法可供我们使用，它需要传递一个数组，和要查找的元素。
+
+```sql
+int[] anArray = new int[] {1, 2, 3, 4, 5};
+int index = Arrays.binarySearch(anArray, 4);
+
+//或者也可以
+int [] arrayList = {7,5,1,4,2,3,6};
+Arrays.sort(arrayList);
+
+int index = Arrays.binarySearch(arrayList,2);
+System.out.println(index);
+```
+
+“除了一维数组，还有[二维数组](https://javabetter.cn/array/double-array.html)，比如说用二维数组打印一下杨辉三角，我们下一节会讲。”
+
 
 
 ## 其他
