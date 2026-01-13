@@ -173,13 +173,129 @@ Container是YARN中的资源抽象，它封装了某个节点上的多维度资�
 
 
 
+## MapReduce
+
+ **Hive 就像是一个自动驾驶系统，而 MapReduce 就是这台车的引擎原理。**
+
+
+
+<span style="color:red">面试官问 MapReduce，其实是想看你懂不懂分布式计算的底层逻辑。</span>
+
+既然你已经搞定了 Hive，并且理解了它如何把 SQL 变成底层的任务，那么现在学习 **MapReduce** 正是时候。
+
+因为 **Hive 就像是一个自动驾驶系统，而 MapReduce 就是这台车的引擎原理。** 面试官问 MapReduce，其实是想看你懂不懂分布式计算的底层逻辑。
+
+
+
+### 1. 核心思想：分而治之 (Divide and Conquer)
+
+想象你要数 10000 枚硬币，一个人数很慢。
+
+- **Map（分）：** 你找 10 个朋友，每人发 1000 枚，让他们各自数出结果。
+- **Reduce（合）：** 你把这 10 个朋友数出来的数字加在一起。
+
+这就是 MapReduce 的全部真相。
+
+
+
+### 2.<span style="color:red"> MapReduce 的三大阶段（面试必考）</span>
+
+在 Hadoop 中，一个 MapReduce 任务必须经历三个核心阶段：
+
+**① Map 阶段（切分与映射）**
+
+- **输入：** 原始数据（比如几百 GB 的日志文件）。
+- **动作：** 每一行数据被解析成 `key-value` 对。
+- **例子：** 统计单词频率时，Map 会把 "Apple" 变成 `(Apple, 1)`。
+
+**② Shuffle 阶段（洗牌/核心枢纽）**
+
+这是 **MapReduce 的灵魂**，也是面试最爱问的地方。
+
+- **动作：** 系统自动把所有相同的 `Key` 收集到一起。
+- **例子：** 把所有 Map 出来的 `(Apple, 1)` 都送到同一个 Reduce 任务那里。
+- **注意：** 这里涉及**排序 (Sort)**、**分组 (Group)** 和**网络传输**，是性能瓶颈所在。
+
+**③ Reduce 阶段（规约/聚合）**
+
+- **动作：** 接收 Shuffle 过来的数据，进行逻辑计算。
+- **例子：** 收到一群 `(Apple, [1, 1, 1])`，相加得出 `(Apple, 3)`。
+
+------
+
+### **3. 一个完整的 WordCount 流程图**
+
+假设我们有一行文本：`Hello Hive Hello Hadoop`
+
+1. **InputSplit**: 系统切分数据。
+2. **Map**: 产出 `(Hello, 1), (Hive, 1), (Hello, 1), (Hadoop, 1)`。
+3. **Shuffle**: 排序并分发，变成 `(Hadoop, 1), (Hello, [1, 1]), (Hive, 1)`。
+4. **Reduce**: 汇总，变成 `(Hadoop, 1), (Hello, 2), (Hive, 1)`。
+5. **Output**: 写入 HDFS。
+
+------
+
+### **4. 为什么现在大家说 MapReduce“慢”？<span style="color:red">（面试深度题）</span>**
+
+作为数据科学专业的学生，你要能从**架构设计**上回答这个问题：
+
+1. **磁盘 I/O 频繁：** MapReduce 习惯把每一步的中间结果都写到硬盘（HDFS）上。硬盘读写比内存慢几千倍。
+2. **启动开销大：** 每一个任务都要启动独立的 JVM 进程，启动就要好几秒。
+3. **Shuffle 过程重：** 强制排序虽然保证了数据有序，但在不需要排序的场景下浪费了大量计算资源。
+
+*所以：* **Spark** 出现了，它把中间结果留在**内存**里，极大地提升了速度。
+
+------
+
+### **5. MapReduce 的各个角色 (YARN 环境下)**
+
+你在 `jps` 中看到的那些进程，在跑 MapReduce 时是这样分工的：
+
+- **ResourceManager (RM)**：大 Boss，负责全集群资源的分配。
+- **NodeManager (NM)**：小弟，每台机器上的资源监工。
+- **ApplicationMaster (AM)**：一个任务的“包工头”，负责监督这一个 MapReduce 任务的生死。
+
+------
+
+### **6. 系统学习建议：你的第一个 MapReduce 程序**
+
+虽然现在写 Hive SQL 多，但面试官可能会让你手写（或伪代码描述）一个 MapReduce 程序。
+
+**你需要掌握的代码结构：**
+
+1. **Mapper 类**：重写 `map` 方法。
+2. **Reducer 类**：重写 `reduce` 方法。
+3. **Driver 类**：配置 Job（如输入输出路径、关联 Map/Reduce 类等）。
+
+------
+
+### 💡 思考题（准备下一次交流）：
+
+**如果在 Map 阶段数据不均匀，比如某一个单词出现了 1 亿次，而其他单词只出现了 1 次，会发生什么？**
+
+这就是大数据里著名的 **“数据倾斜 (Data Skew)”**。它是所有大数据组件（Hive, Spark, Flink）共同的敌人。
+
+**你想了解如何通过 MapReduce 的原理来解决数据倾斜吗？这直接决定了你面试能否拿到高薪。**
+
+
+
 ## MySql
+
+
 
 普通用户密码:202428
 
 远程密码:202428 / root(存疑 )
 
+
+
+
+
+
+
 ## HIVE
+
+### 基础知识
 
 Hive是单机工具，只需要部署在一台服务器即可。Hive虽然是单机的，但是它可以提交分布式运行的MapReduce程序运行。
 
@@ -200,7 +316,7 @@ Hive是单机工具，只需要部署在一台服务器即可。Hive虽然是单
 
 
 
-### 1. 什么是 Hive？（形象理解）
+#### 1. 什么是 Hive？（形象理解）
 
 想象有一个巨大的仓库，里面堆满了成千上万个巨大的 Excel 表格（这就是 **HDFS**，分布式文件系统）。如果你想在这些文件里找数据，得写复杂的程序去遍历。
 
@@ -214,9 +330,9 @@ Hive是单机工具，只需要部署在一台服务器即可。Hive虽然是单
 
 ![image-20260104174205821](../studyDoc/assets/dataDevAssets/2hadoopHiveIntro.png)
 
-### 2.基础知识
+#### 2.基础知识
 
-#### ① 元数据 (Metadata)
+**① 元数据 (Metadata)**
 
 - Hive 本身**不存储**数据。真正的数据文件（如 `.txt` 或 `.orc`）存在 HDFS 上。
 - Hive 只存储“关于数据的数据”：比如表名是什么、有哪些列、每一列是什么类型、文件存在 HDFS 的哪个路径下。
@@ -224,11 +340,7 @@ Hive是单机工具，只需要部署在一台服务器即可。Hive虽然是单
 
 
 
-
-
-### 3.Hive组件
-
-
+#### 3.Hive组件
 
  Hive 的整体运作看作这样：
 
@@ -239,17 +351,7 @@ Hive是单机工具，只需要部署在一台服务器即可。Hive虽然是单
 
 
 
-
-
-
-
-
-
-
-
-
-
-#### ①Metastore
+**①Metastore**
 
 通常是存储在关系数据库如 mysql/derby中。Hive 中的元数据包括表的名字，表的列和分区及其属性，表的属性（是否为外部表等），表的数据所在目录等。
 
@@ -259,9 +361,7 @@ Hive是单机工具，只需要部署在一台服务器即可。Hive虽然是单
 
 
 
-
-
-#### ②Driver驱动程序
+**②Driver驱动程序**
 
 包括语法解析器、计划编译器、优化器、执行器
 
@@ -318,7 +418,7 @@ EXPLAIN SELECT name, COUNT(*) FROM student GROUP BY name;
 
 
 
-##### 3. **面试* *为什么面试官喜欢考 Driver？
+##### 3. *面试* 为什么面试官喜欢考 Driver？
 
 面试官问 Driver，其实是在考你对**查询性能调优**的理解。
 
@@ -326,9 +426,7 @@ EXPLAIN SELECT name, COUNT(*) FROM student GROUP BY name;
 
 
 
-
-
-#### ③用户接口
+**③用户接口**
 
 包括 CLI、JDBC/ODBC、WebGUI。其中，CLI(command line interface)为shell命令行；Hive中的Thrift服务器允许外部客户端通过网络与Hive进行交互，类似于JDBC或ODBC协议。WebGUI是通过浏览器访问Hive。-- Hive提供了 Hive Shell、 ThriftServer等服务进程向用户提供操作接口
 
@@ -367,3 +465,198 @@ EXPLAIN SELECT name, COUNT(*) FROM student GROUP BY name;
 
 - **它的角色：** 所有的 JDBC 连接请求、Beeline 请求都会先发给 HiveServer2。
 - **它的作用：** 1.  **多用户并发：** 允许多个人同时连上来写 SQL。 2.  **身份验证：** 检查你有没有权限操作这张表。 3.  **连接池管理：** 就像酒店前台，管理着所有进进出出的连接。
+
+
+
+
+
+#### hive mysql和元数据管理的关系
+
+##### 1. 角色扮演：图书馆模型
+
+想象你要管理一个拥有 **10亿本书** 的超级大图书馆：
+
+- **HDFS（仓库）：** 是巨大的**书架区域**。书就散乱地堆在那里。它只管存，不管书里写了什么，也不管书叫什么。
+- **MySQL（档案卡）：** 是门口的一个**小抽屉**，里面放着几千张纸质卡片。每张卡片记录着：*“某本书叫《大数据》，在第 99 号书架的第三层”*。
+- **Hive Metastore（管理员）：** 是图书馆的**专职管理员**。
+- **Hive Driver（查询系统）：** 是读者使用的**电脑查询终端**。
+
+
+
+##### 2. 它们是怎么配合的？
+
+当你（用户）想看《大数据》这本书时：
+
+1. **你：** 在电脑（**Hive CLI/Beeline**）输入：“我要看《大数据》”。
+2. **电脑终端（Driver）：** 它不认识书，它跑去问**管理员（Metastore）**：“喂，有位读者要看《大数据》，它在哪？”
+3. **管理员（Metastore）：** 管理员也记不住所有书，但他有钥匙。他打开**小抽屉（MySQL）**，翻出一张档案卡。
+4. **MySQL（档案库）：** 档案卡告诉管理员：*“书在 A 区 5 号架”*。
+5. **管理员（Metastore）：** 把这个位置告诉电脑终端（Driver）。
+6. **电脑终端（Driver）：** 拿着地址，直接冲向**书架（HDFS）**，把那本书取出来展示给你。
+
+
+
+##### 3. 为什么你觉得混乱？（理清 3 个核心痛点）
+
+**Q1：既然元数据在 MySQL 里，我能直接改 MySQL 吗？**
+
+- **原则：绝对不要手动改！** * 如果你偷偷在 MySQL 里把表名 `test` 改成了 `test2`，管理员（Metastore）再去找表的时候就会发现“对不上号”，导致 Hive 崩溃。**一定要通过 Hive 语句（如 `ALTER TABLE`）让 Hive 帮你去改。**
+
+**Q2：Metastore 到底是一个软件，还是一个配置？**
+
+- **它是一个“服务（Service）”**。
+- 你之前启动的那个 `nohup hive --service metastore` 就是让这个“管理员”上线。如果不启动它，Hive 就像断了线的风筝，找不到 MySQL。
+- 元数据库（MySQL）是“存钱的保险柜”，而 Metastore 是“银行柜员”。
+
+**Q3：为什么说 MySQL 是“元数据库”，而 Hive 是“数据仓库”？**
+
+- **MySQL（元数据库）：** 存的是**结构**（表名、列名、分区）。数据量很小，通常只有几十 MB。
+- **Hive（数据仓库）：** 存的是**内容**（具体的业务数据）。数据量巨大，通常是几百 TB。
+
+
+
+#### **元数据库（Metastore Database）** 和 **元数据服务（Metastore Service）**
+
+**元数据库（MySQL）是“存钱的保险柜”，而 Metastore 是“银行柜员”。**
+
+------
+
+##### 1.深度辨析：元数据库 vs Metastore 服务
+
+为了让你彻底不再混乱，我们把这两个东西剥离开来看：
+
+**元数据库 (The Database)**
+
+- **它是谁：** 通常就是你安装的 **MySQL**（或者是 Oracle、PostgreSQL）。
+- **它的职责：** 它是**死**的。它只负责把数据持久化到硬盘上。如果你关掉 Hive，MySQL 里的那些表（TBLS, COLUMNS_V2 等）依然静静地躺在那。
+- **面试术语：** 物理存储层。
+
+**Metastore (The Service)**
+
+- **它是谁：** 它是一个**活**的 Java 进程（即你启动的那个 `RunJar` 进程）。
+- **它的职责：** 它是**中间人**。
+  - 它负责连接 MySQL。
+  - 它负责把 Hive 的请求翻译成 SQL 语句发给 MySQL。
+  - 它通过 **Thrift 协议** 为外部（如 Spark, Presto, Beeline）提供元数据查询服务。
+- **面试术语：** 逻辑服务层。
+
+------
+
+##### 2. 为什么非要搞个 Metastore 服务？直接让 Hive 连 MySQL 不行吗？
+
+其实在 Hive 的早期架构（内嵌模式）里，确实是直接连的。但现在为什么要分开，这涉及大数据架构的两个核心原因：
+
+1. **安全隔离：** 你总不希望几百个开发人员的电脑都能直接拿到 MySQL 的 root 密码吧？有了 Metastore 服务，大家只需要连接服务，由服务统一去读数据库。
+2. **多组件共享：** 这是最重要的。在现代大数据生态里，**Spark**、**Flink**、**Presto** 都要读 Hive 的数据。它们不需要自己去翻 MySQL 的表结构，而是统一去问 Metastore 这个“管理员”。
+
+------
+
+##### **3. 一张图理清三者关系**
+
+当你执行 `DESC test;`（查看表结构）时：
+
+1. **Hive Client**: “告诉我 test 表的结构。”
+2. **Metastore Service (活的进程)**: “好的，等我去查档。” -> *（执行一条类似 `SELECT \* FROM TBLS...` 的 SQL 发给 MySQL）*
+3. **MySQL (元数据库)**: “查到了，给你。”
+4. **Metastore Service**: “报告 Client，test 表有三列...”
+
+------
+
+4. 总结你的理解
+
+- **元数据库 = MySQL**（存储元数据的**地方**）
+- **Metastore = Hive 里的一个服务**（管理元数据的**程序**）
+
+> **面试避坑指南：** 如果面试官问：“Hive 的元数据管理机制是怎么样的？” **你要答：** “Hive 采用 **Metastore 服务** 来解耦元数据操作。物理上，元数据存储在 **MySQL** 等关系型数据库中；逻辑上，由 **Metastore 守护进程** 通过 Thrift 协议对外提供访问接口。这样可以支持多客户端并发访问，并保证了数据库连接的安全。”
+
+
+
+### HIVE客户端
+
+Hive的客户端体系:
+
+**HiveServer2 (HS2)** 和 **Beeline** 是考察“Hive 架构演进”和“企业级安全管理”的核心知识点。
+
+过去我们常用 `hive` 命令行直接操作，但在生产环境中，这种方式已经逐渐被 **Beeline + HiveServer2** 的组合所取代。下面我为你系统性地梳理这部分内容。
+
+<img src="assets/dataDevAssets/4hiveClientStructureSystem.png" alt="4hiveClientStructureSystem" style="zoom:55%;" />
+
+**Beeline账户**
+username:hadoop
+
+password:无
+
+
+
+**启动命令**
+
+```bash
+bin/beeline
+
+!connect jdbc:hive2://node1:10000
+```
+
+> **`!` (感叹号)** 在 Beeline（以及它底层的 SQLLine）中，所有**客户端控制命令**（如连接、退出、显示帮助）都必须以感叹号开头，以便与普通的 SQL 语句区分开。
+>
+> **`connect`** 这是告诉 Beeline：“我要开始建立一个新的数据库连接了”。
+>
+> **`jdbc:hive2://`** 这是 **JDBC 连接协议头**。
+>
+> - `jdbc`: 表示使用 Java 数据库连接驱动。
+> - `hive2`: 明确指定连接的是 HiveServer2（而不是旧版的 HiveServer1）。
+>
+> **`node1:10000`**
+>
+> - `node1`: HiveServer2 所在服务器的主机名或 IP 地址。
+> - `10000`: HiveServer2 的默认监听端口。
+
+
+
+#### 1. 为什么需要 HiveServer2？（对比 Hive CLI）
+
+在早期的 Hive 版本中，用户主要使用 **Hive CLI**。但它存在严重的缺陷，导致无法在大型多用户企业环境中使用：
+
+- **胖客户端（Fat Client）：** Hive CLI 包含所有的查询编译和执行逻辑，用户必须在本地安装完整的 Hive 客户端。
+- **权限隐患：** Hive CLI 直接以当前 OS 用户的身份访问 HDFS 数据，无法进行细粒度的权限控制（如使用 Ranger 或 Sentry）。
+- **无并发管理：** 缺乏一个统一的服务端来协调多个用户的请求。
+
+**HiveServer2 的出现解决了这些问题：** 它是一个基于 **Thrift** 协议的服务，允许远程客户端（如 JDBC/ODBC）并发地提交查询。它支持多用户并发、身份认证（Kerberos/LDAP）和更好的安全性。
+
+#### 2. HiveServer2 核心架构
+
+HiveServer2 是 Hive 的“大脑”，它负责接收请求并与 Hadoop 集群交互。
+
+**核心组成部分：**
+
+1. **Thrift 接口：** 提供跨语言的服务调用能力，支持 TCP 或 HTTP 模式通信。
+2. **Session 管理：** 每个连接都会创建一个 Session，保存该用户的配置信息和临时状态。
+3. **Operation 管理：** 负责 SQL 语句的编译（Compiler）、优化（Optimizer）和执行（Execution Engine）。
+4. **安全层：** 负责认证（你是谁）和授权（你能查什么）。
+
+#### 3. Beeline：现代化的 Hive 客户端
+
+**Beeline** 是一个基于 **SQLLine** 的 JDBC 客户端。它的设计理念是“轻量化”，用户不需要在本地安装 Hive，只需要一个 JDBC 驱动即可连接。
+
+**Beeline 的两种模式：**
+
+1. **嵌入模式 (Embedded Mode)：** * 在本地启动一个隐藏的 HS2 实例。
+   - 通常用于开发测试，生产环境**不推荐**。
+2. **远程模式 (Remote Mode)：**
+   - 通过 JDBC URL 连接远程 HS2 服务。
+   - **生产环境唯一标准。**
+
+```bash
+# 基础连接方式 详细node1见上
+beeline -u jdbc:hive2://<hs2-host>:10000 -n <username> -p <password>
+
+# 生产中带 Kerberos 认证的连接
+beeline -u "jdbc:hive2://<hs2-host>:10000/default;principal=hive/_HOST@REALM"
+```
+
+#### 4. <span style="color:red">关键面试考点：HS2 的高可用 (High Availability)</span>
+
+在生产环境中，HS2 不能是单点故障。我们通常使用 **Zookeeper** 来实现高可用。
+
+- **工作机制：** 多个 HS2 实例启动后，会在 Zookeeper 的指定目录下注册自己的节点信息（Ephemeral Nodes）。
+- **客户端连接：** Beeline 连接时不再指向某个具体的 IP，而是指向 Zookeeper 地址。
+- **连接字符串示例：** `jdbc:hive2://zk_host1:2181,zk_host2:2181/default;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
