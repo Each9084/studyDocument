@@ -442,7 +442,7 @@ FROM strings;
 
 知识点[SQL](https://www.nowcoder.com/exam/oj?tag=3427)
 
-## 描述
+**描述**
 
 现有employees表如下：
 
@@ -487,5 +487,75 @@ SELECT first_name FROM employees ORDER BY SUBSTR(first_name,-2);
 
 --这种也没有区别,因为-2本身就是从右往左起数2位,然后处理倒数第二位到末尾,所以本身就是已经处理了2的内容
 SELECT first_name FROM employees ORDER BY SUBSTR(first_name,-2,2);
+```
+
+
+
+### **SQL253** **平均工资**
+
+中等 通过率：30.48% 时间限制：1秒 空间限制：32M
+
+知识点[SQL](https://www.nowcoder.com/exam/oj?tag=3427)
+
+## 描述
+
+查找排除在职(to_date = '9999-01-01' )员工的最大、最小salary之后，其他的9999-01-01在职员工的平均工资avg_salary。
+
+```sql
+CREATE TABLE `salaries` ( `emp_no` int(11) NOT NULL,
+   `salary` int(11) NOT NULL,
+   `from_date` date NOT NULL,
+   `to_date` date NOT NULL,
+PRIMARY KEY (`emp_no`,`from_date`));
+```
+
+如：
+
+```sql
+INSERT INTO salaries VALUES(10001,85097,'2001-06-22','2002-06-22');
+INSERT INTO salaries VALUES(10001,88958,'2002-06-22','9999-01-01');
+INSERT INTO salaries VALUES(10002,72527,'2001-08-02','9999-01-01');
+INSERT INTO salaries VALUES(10003,43699,'2000-12-01','2001-12-01');
+INSERT INTO salaries VALUES(10003,43311,'2001-12-01','9999-01-01');
+INSERT INTO salaries VALUES(10004,70698,'2000-11-27','2001-11-27');
+INSERT INTO salaries VALUES(10004,74057,'2001-11-27','9999-01-01');
+```
+
+输出格式:
+
+| avg_salary |
+| :--------- |
+| 73292      |
+
+
+
+<span style="color:teal">这里一共有三种思路可以参考:</span>
+
+①通过UNION将MAX()和MIN()的值转成列
+
+②直接通过`AND `进行`WHERE salary != (SELECT MAX(salary) FROM salaries)  AND salary != (SELECT MIN(salary) FROM salaries);`
+
+③<span style="color:blue">数学思路: </span>
+
+​	$$AVG = \frac{总和 - 最大值 - 最小值}{总人数 - 2}$$
+
+```sql
+SELECT (SUM(salary) - MAX(salary) - MIN(salary)) / (COUNT(*) - 2)
+FROM salaries;
+```
+
+即可
+
+
+
+着重展示第一个思路:
+
+```sql
+SELECT AVG(salary) FROM salaries
+WHERE salary NOT IN (
+	SELECT MAX(salary) FROM salaries WHERE to_date = '9999-01-01'
+	UNION
+	SELECT MIN(salary) FROM salaries WHERE to_date = '9999-01-01'
+) AND to_date = '9999-01-01'
 ```
 

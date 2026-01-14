@@ -1194,6 +1194,262 @@ System.out.println(index);
 
 
 
+#### 数组的复制
+
+有时候我们需要将一个数组的值复制到另外一个数组当中，那就会涉及到数组复制的知识点。
+
+在 [String 类](https://javabetter.cn/string/string-source.html)（讲完数组就会讲）中其实会经常遇到数组复制，比如说 `substring()` 方法。
+
+```sql
+public String substring(int beginIndex) {
+    return (beginIndex == 0) ? this : new String(value, beginIndex, subLen);
+}
+```
+
+如果你要求的子字符串是从索引 `0` 开始的（即截取整个字符串），那么**直接返回当前对象自己 (`this`)**
+
+**`new String(...)`**：它会根据起始位置和长度，**拷贝**出一份新的字符数组，并创建一个**全新的 String 对象**。
+
+**1. 拆解这个构造方法**
+
+那么把`new String(value, beginIndex, subLen)` 逻辑公式化：
+
+- **起始位置**：`beginIndex`
+- **结束位置**：`beginIndex + subLen`
+- **截取的总长度**：`subLen`
+
+**举个例子：** 假设 `value`（原字符串数组）是 `{'h', 'e', 'l', 'l', 'o'}`，你想截取 `"ell"`。
+
+- `beginIndex` 就是 `1`（指向 'e'）。
+- `subLen` 就是 `3`（因为你要拿 'e', 'l', 'l' 这三个字符）。
+- 对应的物理结束位置就是 `1 + 3 = 4`（不包含第 4 位的 'o'）。
+
+
+
+**2.内存中到底发生了什么？**
+
+当你调用这个构造方法时，JVM 内部会执行一个非常核心的指令：`System.arraycopy`。
+
+我们可以把这个过程可视化：
+
+1. **开辟空间**：在堆（Heap）中分配一块新的、大小刚好为 `subLen` 的内存区域。
+2. **数据搬运**：
+   - 源头：原数组 `value`。
+   - 起点：`beginIndex`。
+   - 目的地：新开辟的数组。
+   - 搬运量：`subLen`。
+3. **独立封装**：这个新的数组被封装进一个新的 `String` 对象中返回。
+
+
+
+**3. 为什么要强调“新空间”？**
+
+它是“开辟一个新的空间”。这意味着：
+
+- **修改互不影响**：虽然 `String` 本身不可变，但这种物理隔离确保了即使你通过反射等特殊手段修改了原数组，截取出来的字符串也不会受到影响。
+- **内存回收**：原字符串（大数组）和子字符串（小数组）在内存中是**两块独立的内存**。如果原大字符串不再被使用了，垃圾回收器（GC）可以放心地把那块大内存回收掉，而不会因为还剩一个小小的子字符串而无法回收。
+
+
+
+<span style="color:red">你可能会问：*“直接让新字符串指向旧数组的一部分，不是更快更省内存吗？”*</span>
+
+这就是**Java 历史上的一个大坑**：
+
+- **旧版 Java (6 以前) 的做法**：就是共享。
+  - **后果**：如果你有一个 $1\text{GB}$ 大小的字符串，你只想截取其中的 $2$ 个字符。因为新字符串还引用着那个 $1\text{GB}$ 的大数组，导致这 $1\text{GB}$ 的内存**永远无法被回收**。这叫内存泄漏（Memory Leak）。
+- **新版 Java 的做法**：宁愿多花一点点时间去**复制**，也要保证截取出来的字符串是**完全独立**的。
+  - **结果**：一旦原大字符串不再使用，它那 $1\text{GB}$ 的内存就能立刻被垃圾回收器（GC）收走。
+
+
+
+那么对于数组的复制这里特别看一下;
+
+```sql
+public String(char value[], int offset, int count) {
+    this.value = Arrays.copyOfRange(value, offset, offset+count);
+}
+```
+
+其中的 `Arrays.copyOfRange()` 方法就是用来复制数组的，我们在讲 [Arrays 类](https://javabetter.cn/common-tool/arrays.html#_2-copyofrange)的时候就会讲到。
+
+它底层调用的是 `System.arraycopy()` 方法，这个方法是一个 [native 方法](https://javabetter.cn/oo/native-method.html)，它是用 C/C++ 实现的，效率非常高。
+
+
+
+System.arraycopy 方法的定义如下所示：
+
+```java
+public static native void arraycopy(Object src,  int  srcPos,
+                                    Object dest, int destPos,
+                                    int length);
+```
+
+
+
+| **参数**      | **含义**              | **你的代码 (第一次复制)** | **你的代码 (第二次复制)**   |
+| ------------- | --------------------- | ------------------------- | --------------------------- |
+| **`src`**     | **源数组** (从哪拷)   | `array1`                  | `array2`                    |
+| **`srcPos`**  | **源数组起始位置**    | `0`                       | `0`                         |
+| **`dest`**    | **目标数组** (拷到哪) | `mergedArray`             | `mergedArray`               |
+| **`destPos`** | **目标数组存放起点**  | `0`                       | **`array1.length`** (重要!) |
+| **`length`**  | **拷贝多少个元素**    | `array1.length`           | `array2.length`             |
+
+
+
+用法如下所示：
+
+```java
+int[] array1 = {1, 2, 3};
+int[] array2 = {4, 5, 6};
+
+// 创建一个新数组，长度为两个数组长度之和
+int[] mergedArray = new int[array1.length + array2.length];
+
+// 复制第一个数组到新数组
+System.arraycopy(array1, 0, mergedArray, 0, array1.length);
+System.out.println(Arrays.toString(mergedArray));
+
+// 复制第二个数组到新数组
+System.arraycopy(array2, 0, mergedArray, array1.length, array2.length);
+System.out.println(Arrays.toString(mergedArray));
+```
+
+输出结果如下所示：
+
+```java
+[1, 2, 3, 0, 0, 0]
+[1, 2, 3, 4, 5, 6]
+```
+
+当然了，我们也可以使用循环来完成数组的复制：
+
+
+
+```java
+int[] array1 = {1, 2, 3};
+int[] array2 = {4, 5, 6};
+
+// 创建一个新数组，长度为两个数组长度之和
+int[] mergedArray = new int[array1.length + array2.length];
+
+// 复制第一个数组到新数组
+int index = 0;
+for (int element : array1) {
+    mergedArray[index++] = element;
+}
+
+// 复制第二个数组到新数组
+for (int element : array2) {
+    mergedArray[index++] = element;
+}
+```
+
+
+
+
+
+#### 数组越界
+
+在我们进行数组操作的时候，最容易遇到的一个问题就是数组越界，也就是 ArrayIndexOutOfBoundsException [异常](https://javabetter.cn/exception/gailan.html)。
+
+```java
+int[] anArray = new int[] {1, 2, 3, 4, 5};
+System.out.println(anArray[5]);
+```
+
+上面这段代码就会抛出数组越界的异常，因为数组的索引是从 0 开始的，所以最大索引为 `length - 1`，也就是 4，所以当我们使用 5 作为索引的时候，就会抛出异常。
+
+所以在操作数组之前，一定要注意索引的范围。
+
+
+
+### 二维数组
+
+二维数组实际上在开发中用的不多，也很简单，就从一维到二维
+
+#### 1.什么是二维数组
+
+二维数组是一种数据类型，可以存储多行和多列的数据。它由一系列的行和列组成，每个元素都可以通过一个行索引和列索引来访问。例如，一个3行4列的二维数组可以表示为以下形式：
+
+```java
+array = [
+  [a, b, c, d],
+  [e, f, g, h],
+  [i, j, k, l]
+]
+```
+
+在这个例子中，第一行有4个元素，第二行有4个元素，第三行有4个元素，每个元素都有一个行索引和一个列索引。例如，元素 $array[2][3]$ 是第2行第3列的元素，它的值是 g。
+
+使用二维数组可以有效地存储和处理表格数据，如矩阵、图像、地图等等。
+
+
+
+#### 2.创建二维数组
+
+要在 Java 中创建二维数组，你必须指定要存储在数组中的数据类型，后跟两个方括号和数组的名称。
+
+语法如下所示：
+
+```java
+data_type[][] array_name;
+```
+
+让我们看一个代码示例:
+
+```java
+int[][] oddNumbers = { {1, 3, 5, 7}, {9, 11, 13, 15} };
+```
+
+
+
+#### 3.访问二维数组中的元素
+
+我们可以使用两个方括号来访问二维中的元素。
+
+第一个表示我们要从中访问元素的数组，而第二个表示我们要访问的元素索引。
+
+让我们用一个例子来简化上面的解释：
+
+```java
+int[][] oddNumbers = { {1, 3, 5, 7}, {9, 11, 13, 15} };
+
+System.out.println(oddNumbers[0][0]);
+// 1
+```
+
+在上面的示例中，`oddNumbers` 数组中有两个数组——`{1, 3, 5, 7}` 和 `{9, 11, 13, 15}`。
+
+第一个数组——`{1, 3, 5, 7}`——用 0 表示。
+
+第二个数组——`{9, 11, 13, 15}`——用 1 表示。
+
+第一个数组是 0，第二个是 1，第三个是 2，依此类推。
+
+因此，要访问第一个数组中的项目，我们将 0 分配给第一个方括号。由于我们试图访问数组中的第一项，我们将使用它的索引，即 0：`oddNumbers[0][0]`。
+
+让我们进一步分解它。
+
+这是访问元素的代码：`oddNumbers[?][?]`。
+
+我在两个方括号中都加上了问号——随着进展填写它们。
+
+假设我们要访问第二个数组中的元素，我们的代码将如下所示：`oddNumbers[1][?]`。
+
+现在我们要在第二个数组（`{9, 11, 13, 15}`）中尝试访问其中一个元素。就像一维数组一样，每个元素都有一个从零开始的索引。
+
+因此，要访问第三个元素 `13`，我们将其索引号传递给第二个方括号：`oddNumbers[1][2]`。
+
+来看这样一个例子：
+
+```java
+int[][] oddNumbers = { {1, 3, 5, 7}, {9, 11, 13, 15}, {17, 19, 21, 23} };
+```
+
+
+
+
+
 ## 其他
 
 ### `Class`(大写C)和`class`(小写c)的区别
