@@ -497,7 +497,7 @@ SELECT first_name FROM employees ORDER BY SUBSTR(first_name,-2,2);
 
 知识点[SQL](https://www.nowcoder.com/exam/oj?tag=3427)
 
-## 描述
+**描述**
 
 查找排除在职(to_date = '9999-01-01' )员工的最大、最小salary之后，其他的9999-01-01在职员工的平均工资avg_salary。
 
@@ -559,3 +559,62 @@ WHERE salary NOT IN (
 ) AND to_date = '9999-01-01'
 ```
 
+
+
+### **SQL259** 开窗函数的动态累加
+
+**统计salary的累计和running_total**
+
+中等 通过率：42.60% 时间限制：1秒 空间限制：32M
+
+知识点[SQL](https://www.nowcoder.com/exam/oj?tag=3427)
+
+## 描述
+
+统计salaries表中to_date = "9999-01-01"的员工累计工资和running_total，举例：第三个员工的running_total为前两个员工的salary累计和，其他以此类推。
+
+注意：running_total要的是对在职员工的salary进行cumulative sum，在职员工的筛选条件为to_date = "9999-01-01"
+
+CREATE TABLE `salaries` ( `emp_no` int(11) NOT NULL,
+`salary` int(11) NOT NULL,
+`from_date` date NOT NULL,
+`to_date` date NOT NULL,
+PRIMARY KEY (`emp_no`,`from_date`));
+输出格式:
+
+| emp_no | salary | running_total |
+| :----- | :----- | :------------ |
+| 10001  | 88958  | 88958         |
+| 10002  | 72527  | 161485        |
+| 10003  | 43311  | 204796        |
+| 10004  | 74057  | 278853        |
+| 10005  | 94692  | 373545        |
+| 10006  | 43311  | 416856        |
+| 10007  | 88070  | 504926        |
+| 10009  | 95409  | 600335        |
+| 10010  | 94409  | 694744        |
+| 10011  | 25828  | 720572        |
+
+
+
+<span style="color:red">这道题的思路就是,我们的目标是将salary累加到对应的一个列中,那么能实现这个步骤的就是开窗函数,因为只有开窗函数可以使不同行的值放在同一个列对应的位置上</span>
+
+```sql
+SELECT emp_no,salary,SUM(salary) OVER (ORDER BY emp_no) AS running_total  
+FROM salaries 
+WHERE to_date='9999-01-01';
+```
+
+如果不加`ORDER BY `就变成了全表的总和默认**“窗口 = 整个结果集”
+
+**结果**：每一行都会显示**全表所有人的工资总和**。
+
+
+
+写了 `ORDER BY`（累加模式）**行为**：
+
+`ORDER BY` 像是一个**信号**，告诉数据库：“请开启**逐行动态增长**模式”。
+
+**逻辑**：它会默认执行 `RANGE BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW`（从第一行到当前行）。
+
+**结果**：实现你想要的 **Running Total（累计和）**。
