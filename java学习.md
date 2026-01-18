@@ -1501,7 +1501,7 @@ System.out.println(oddNumbers[2][2]);
 
 
 
-#### **1.为什么不能直接打印数组?**
+#### **1.Why不能直接打印数组?**
 
 来看这样一个例子:
 
@@ -1559,7 +1559,7 @@ public String toString() {
 
 
 
-#### **2.为什么**数组不单独定义为类?
+#### **2.Why**数组不单独定义为类?
 
 那为什么数组不单独定义一个类来表示呢？就像字符串 String 类那样呢?
 
@@ -1616,7 +1616,7 @@ public final class String
 
 
 
-#### 3.那为什么数组可以存储基本类型
+#### 3.Why数组可以存储基本类型
 
 <span style="color:green">既然数组是对象（Object），而对象通常只能持有引用，那为什么它能直接把 `int`, `double` 这种“非对象”的基本类型塞进肚子里呢？</span>
 
@@ -1669,9 +1669,117 @@ public final class String
 | **访问速度** | 极快（硬件级别）                | 较慢（需要寻址和拆箱）                 |
 | **实现者**   | **JVM 虚拟机直接实现**          | Java 开发者编写的类                    |
 
-
-
 数组，是 Java 世界里唯一能在大规模处理数据时，避开对象包装、直接触摸原始字节的地方。
+
+
+
+#### 4.stream 流打印 Java 数组
+
+“我们来看第一种打印数组的方法，使用时髦一点的[Stream 流](https://javabetter.cn/java8/stream.html)。”
+
+第一种形式：
+
+```java
+Arrays.asList(cmowers).stream().forEach(s -> System.out.println(s));
+```
+
+第二种形式：
+
+```java
+Stream.of(cmowers).forEach(System.out::println);
+```
+
+第三种形式：
+
+```java
+Arrays.stream(cmowers).forEach(System.out::println);
+```
+
+
+
+没错，这三种方式都可以轻松胜任本职工作，并且显得有点高大上，毕竟用到了 Stream，以及 [lambda 表达式](https://javabetter.cn/java8/Lambda.html)。
+
+后面会提及 Stream流,Lambda表达式;
+
+
+
+#### 5.for 循环打印 Java 数组
+
+“当然了，也可以使用传统的方式，for 循环。甚至 for-each 也行。”
+
+```java
+for(int i = 0; i < cmowers.length; i++){
+    System.out.println(cmowers[i]);
+}
+
+for (String s : cmowers) {
+    System.out.println(s);
+}
+```
+
+
+
+#### 6.Arrays 工具类打印 Java 数组
+
+[上一篇](https://javabetter.cn/common-tool/arrays.html)在讲 Arrays 工具类的时候，提到过另外一种方法 `Arrays.toString()` ,有些人认为 `Arrays.toString()` 是打印数组的最佳方式，没有之一。
+
+`Arrays.toString()` 可以将任意类型的数组转成字符串，包括基本类型数组和引用类型数组。该方法有多种重载形式。
+
+使用 `Arrays.toString()` 方法来打印数组很优雅
+
+
+
+#### 7.POJO 的打印规约
+
+POJO 指的是那些**极其纯净**的 Java 对象。它不继承任何复杂的框架类（比如 `Servlet` 或 `EntityBean`），也不实现奇怪的接口。
+
+一个标准的 POJO 通常长这样：
+
+1. **私有属性**（Private fields）
+2. **公共的 Getter/Setter 方法**
+3. **一个无参构造函数**
+
+**比喻：** 如果复杂的框架对象是“全副武装的特种兵”，那么 POJO 就是“穿白 T 恤的普通老百姓”。它只负责**存数据**。
+
+
+
+**为什么打印 POJO 很重要？**
+
+当有一个 `Student` 类的 POJO 数组时：
+
+```java
+Student[] students = { new Student("张三", 20), new Student("李四", 22) };
+```
+
+如果你直接用 `Arrays.toString(students)` 打印，结果往往是： `[com.test.Student@7a81197d, com.test.Student@5ca881b5]`
+
+**这是因为 POJO 默认继承了 `Object` 类的 `toString()`。** 正如我们之前讨论的，它只会打印“类名+哈希码”。
+
+
+
+#### 如何让 POJO 打印得“漂亮”？
+
+为了能一眼看出 POJO 里的内容（比如名字和年龄），我们通常会在 POJO 类里**重写（Override）** `toString()` 方法。
+
+public class Student {
+    private String name;
+    private int age;
+
+```java
+public class Student {
+    private String name;
+    private int age;
+
+    // 重写后，打印出来的就是内容而不是地址
+    @Override
+    public String toString() {
+        return "Student{name='" + name + "', age=" + age + "}";
+    }
+}
+```
+
+
+
 
 
 
