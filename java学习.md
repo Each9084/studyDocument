@@ -1731,7 +1731,13 @@ for (String s : cmowers) {
 
 #### 7.POJO 的打印规约
 
+
+
 POJO 指的是那些**极其纯净**的 Java 对象。它不继承任何复杂的框架类（比如 `Servlet` 或 `EntityBean`），也不实现奇怪的接口。
+
+POJO 是用最纯粹的 Java 代码定义的数据模型；而重写 POJO 的 `toString` 方法，则是为了给这堆纯粹的数据穿上一件“可读”的外衣，让 `Arrays.toString()` 这种原生扫描仪能扫出我们看得懂的人话。
+
+
 
 一个标准的 POJO 通常长这样：
 
@@ -1761,9 +1767,7 @@ Student[] students = { new Student("张三", 20), new Student("李四", 22) };
 
 为了能一眼看出 POJO 里的内容（比如名字和年龄），我们通常会在 POJO 类里**重写（Override）** `toString()` 方法。
 
-public class Student {
-    private String name;
-    private int age;
+
 
 ```java
 public class Student {
