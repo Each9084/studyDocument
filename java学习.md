@@ -1784,6 +1784,77 @@ public class Student {
 
 
 
+### 字符串源码解读
+
+字符串的细节特别多，什么[字符串常量池](https://javabetter.cn/string/constant-pool.html)、[字符串不可变性](https://javabetter.cn/string/immutable.html)、[字符串拼接](https://javabetter.cn/string/join.html)、字符串长度限制等等,我们慢慢来说
+
+#### String 类的声明
+
+```JAVA
+public final class String
+    implements java.io.Serializable, Comparable<String>, CharSequence {
+}
+```
+
+
+
+第一，String 类是 [final](https://javabetter.cn/oo/final.html) 的，意味着它不能被子类[继承](https://javabetter.cn/oo/encapsulation-inheritance-polymorphism.html)。这些知识我们讲面向对象编程的时候都会讲到
+
+第二，String 类实现了 [Serializable 接口](https://javabetter.cn/io/Serializbale.html)，意味着它可以[序列化](https://javabetter.cn/io/serialize.html)
+
+第三，String 类实现了 [Comparable 接口](https://javabetter.cn/basic-extra-meal/comparable-omparator.html)，意味着最好不要用‘==’来[比较两个字符串是否相等](https://javabetter.cn/string/equals.html)，而应该用 `compareTo()` 方法去比较。
+
+因为 == 是用来比较两个对象的地址，这个在讲[字符串比较](https://javabetter.cn/string/equals.html)的时候会详细讲。如果只是说比较字符串内容的话，可以使用 String 类的 equals 方法，源码和注释如下所示：
+
+```java
+public boolean equals(Object anObject) {
+    // 检查是否是同一个对象的引用，如果是，直接返回 true
+    if (this == anObject) {
+        return true;
+    }
+    // 检查 anObject 是否是 String 类的实例
+    if (anObject instanceof String) {
+        String anotherString = (String) anObject; // 将 anObject 强制转换为 String 类型
+        int n = value.length; // 获取当前字符串的长度
+        // 检查两个字符串长度是否相等
+        if (n == anotherString.value.length) {
+            char v1[] = value; // 当前字符串的字符数组
+            char v2[] = anotherString.value; // 另一个字符串的字符数组
+            int i = 0; // 用于遍历字符数组的索引
+            // 遍历比较两个字符串的每个字符
+            while (n-- != 0) {
+                // 如果在任何位置字符不同，则返回 false
+                if (v1[i] != v2[i])
+                    return false;
+                i++;
+            }
+            // 所有字符都相同，返回 true
+            return true;
+        }
+    }
+    // 如果 anObject 不是 String 类型或长度不等，则返回 false
+    return false;
+}
+```
+
+第四，[String 和 StringBuffer、StringBuilder](https://javabetter.cn/string/builder-buffer.html) 一样，都实现了 CharSequence 接口，所以它们仨属于近亲。由于 String 是不可变的，所以遇到[字符串拼接](https://javabetter.cn/string/join.html)的时候就可以考虑一下 String 的另外两个好兄弟，StringBuffer 和 StringBuilder，它俩是可变的。
+
+
+
+#### String 底层为什么由 char 数组优化为 byte 数组
+
+```java
+private final char value[];
+```
+
+
+
+
+
+
+
+
+
 
 
 
