@@ -1847,15 +1847,239 @@ public boolean equals(Object anObject) {
 private final char value[];
 ```
 
+Java 9 以前，String 是用 char 型[数组](https://javabetter.cn/array/array.html)实现的，之后改成了 byte 型数组实现，并增加了 coder 来表示编码。这样做的好处是在 Latin1 字符为主的程序里，可以把 String 占用的内存减少一半。当然，天下没有免费的午餐，这个改进在节省内存的同时引入了编码检测的开销。
+
+让我们详细展开说说:
+
+**痛点：char 数组的“空间浪费”**
+
+在 Java 8 之前，`String` 内部使用的是 `char[]`。
+
+- 在 Java 中，`char` 类型占用 **2 个字节**（16 位），因为它使用的是 UTF-16 编码。
+- **现实情况**：绝大多数程序中的字符串其实只包含英文字母、数字或简单的标点符号。这些字符在 ASCII 或 Latin-1 编码下只需要 **1 个字节** 就能存下。
+
+**结果**：如果你存一个字符串 `"abc"`，Java 8 会分配 6 个字节，但其实有 3 个字节全是 0，白白浪费了一半的空间。
+
+
+
+**方案：byte 数组 + 编码标识 (coder)**
+
+Java 9 把内部实现改成了 `byte[]`，并引入了一个叫 **`coder`** 的标记位。
+
+```java
+// Java 9+ 内部结构简图
+private final byte[] value;
+private final byte coder; // 标识位
+```
+
+**LATIN1 (0)**：如果字符串只包含单字节字符，`byte[]` 每个位置存 1 个字符，**内存占用直接减半**。
+
+**UTF16 (1)**：如果字符串包含中文等复杂字符，`byte[]` 会自动切换模式，用 2 个字节存 1 个字符，回到和以前一样的逻辑。
+
+
+
+**优化的收益**
+
+**① 内存占用大幅下降**
+
+据 Oracle 官方统计，绝大多数 Java 应用的堆内存（Heap）中，`String` 对象占据了约 **25% - 40%**。优化后，很多应用的整体内存占用下降了 **10% - 15%**。
+
+**② 垃圾回收（GC）压力减小**
+
+内存占用少了，意味着触发垃圾回收的频率降低了。同时，GC 在扫描内存时，处理更小的数据块速度也更快，从而提升了程序的整体性能。
+
+**③ 缓存友好**
+
+由于数据更紧凑，CPU 缓存（L1/L2 Cache）可以一次性装入更多的字符，提高了 CPU 的执行效率。
+
+
+
+小知识:
+
+我们使用 `jmap -histo:live pid | head -n 10` 命令就可以查看到堆内对象示例的统计信息、ClassLoader 的信息以及 finalizer 队列等。
+
+> Java 的对象基本上都在[堆](https://javabetter.cn/jvm/neicun-jiegou.html)上。后面也会讲。这里的 pid 就是进程号，可以通过 `ps -ef | grep java` 命令查看，下图中红色框出来的第二项就是 pid。
+
+
+
+当然了，仅仅将 `char[]` 优化为 `byte[]` 是不够的，还要配合 Latin-1 的编码方式，该编码方式是用单个字节来表示字符的，这样就比 UTF-8 编码节省了更多的空间。
+
+换句话说，对于：
+
+```java
+String name = "jack";
+```
+
+这样的，使用 Latin-1 编码，占用 4 个字节就够了。
+
+但对于：
+
+```java
+String name = "小二";
+```
+
+这种，木的办法，只能使用 UTF16 来编码。
+
+针对 JDK 9 的 String 源码里，为了区别编码方式，追加了一个 coder 字段来区分。
+
+```java
+/**
+ * The identifier of the encoding used to encode the bytes in
+ * {@code value}. The supported values in this implementation are
+ *
+ * LATIN1
+ * UTF16
+ *
+ * @implNote This field is trusted by the VM, and is a subject to
+ * constant folding if String instance is constant. Overwriting this
+ * field after construction will cause problems.
+ */
+private final byte coder;
+```
+
+Java 会根据字符串的内容自动设置为相应的编码，要么 Latin-1 要么 UTF16。
+
+也就是说，从 `char[]` 到 `byte[]`，**中文是两个字节，纯英文是一个字节，在此之前呢，中文是两个字节，英文也是两个字节**。
+
+在 UTF-8 中，0-127 号的字符用 1 个字节来表示，使用和 ASCII 相同的编码。只有 128 号及以上的字符才用 2 个、3 个或者 4 个字节来表示。
+
+- 如果只有一个字节，那么最高的比特位为 0；
+- 如果有多个字节，那么第一个字节从最高位开始，连续有几个比特位的值为 1，就使用几个字节编码，剩下的字节均以 10 开头。
+
+
+
+具体的表现形式为：
+
+- 0xxxxxxx：一个字节；
+- 110xxxxx 10xxxxxx：两个字节编码形式（开始两个 1）；
+- 1110xxxx 10xxxxxx 10xxxxxx：三字节编码形式（开始三个 1）；
+- 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx：四字节编码形式（开始四个 1）。
+
+
+
+也就是说，UTF-8 是变长的，那对于 String 这种有随机访问方法的类来说，就很不方便。所谓的随机访问，就是 charAt、subString 这种方法，随便指定一个数字，String 要能给出结果。如果字符串中的每个字符占用的内存是不定长的，那么进行随机访问的时候，就需要从头开始数每个字符的长度，才能找到你想要的字符。
+
+那你可能会问，UTF-16 也是变长的呢？一个字符还可能占用 4 个字节呢？
+
+的确，UTF-16 使用 2 个或者 4 个字节来存储字符。
+
+- 对于 Unicode 编号范围在 0 ~ FFFF 之间的字符，UTF-16 使用两个字节存储。
+- 对于 Unicode 编号范围在 10000 ~ 10FFFF 之间的字符，UTF-16 使用四个字节存储，具体来说就是：将字符编号的所有比特位分成两部分，较高的一些比特位用一个值介于 D800~DBFF 之间的双字节存储，较低的一些比特位（剩下的比特位）用一个值介于 DC00~DFFF 之间的双字节存储。
+
+但是在 Java 中，一个字符（char）就是 2 个字节，占 4 个字节的字符，在 Java 里也是用两个 char 来存储的，而 String 的各种操作，都是以 Java 的字符（char）为单位的，charAt 是取得第几个 char，subString 取的也是第几个到第几个 char 组成的子串，甚至 length 返回的都是 char 的个数。
+
+所以 UTF-16 在 Java 的世界里，就可以视为一个定长的编码。
+
+#### String 类的 hashCode 方法
+
+第六，每一个字符串都会有一个 hash 值，这个哈希值在很大概率是不会重复的，因此 String 很适合来作为 [HashMap](https://javabetter.cn/collection/hashmap.html)（后面会细讲）的键值。
+
+来看 String 类的 hashCode 方法。
+
+```java
+private int hash; // 缓存字符串的哈希码
+
+public int hashCode() {
+    int h = hash; // 从缓存中获取哈希码
+    // 如果哈希码未被计算过（即为 0）且字符串不为空，则计算哈希码
+    if (h == 0 && value.length > 0) {
+        char val[] = value; // 获取字符串的字符数组
+
+        // 遍历字符串的每个字符来计算哈希码
+        for (int i = 0; i < value.length; i++) {
+            h = 31 * h + val[i]; // 使用 31 作为乘法因子
+        }
+        hash = h; // 缓存计算后的哈希码
+    }
+    return h; // 返回哈希码
+}
+```
+
+hashCode 方法首先检查是否已经计算过哈希码，如果已经计算过，则直接返回缓存的哈希码。否则，方法将使用一个循环遍历字符串的所有字符，并使用一个乘法和加法的组合计算哈希码。
+
+这种计算方法被称为“31 倍哈希法”。计算完成后，将得到的哈希值存储在 hash 成员变量中，以便下次调用 hashCode 方法时直接返回该值，而不需要重新计算。这是一种缓存优化，称为“惰性计算”。
+
+31 倍哈希法（31-Hash）是一种简单有效的字符串哈希算法，常用于对字符串进行哈希处理。该算法的基本思想是将字符串中的每个字符乘以一个固定的质数 31 的幂次方，并将它们相加得到哈希值。具体地，假设字符串为 s，长度为 n，则 31 倍哈希值计算公式如下：
+
+```java
+H(s) = (s[0] * 31^(n-1)) + (s[1] * 31^(n-2)) + ... + (s[n-1] * 31^0)
+```
+
+其中，s[i]表示字符串 s 中第 i 个字符的 ASCII 码值，`^`表示幂运算。
+
+31 倍哈希法的优点在于简单易实现，计算速度快，同时也比较均匀地分布在哈希表中。
+
+[hashCode 方法](https://javabetter.cn/basic-extra-meal/hashcode.html)，我们会在另外一个章节里详细讲，戳前面的链接了解。
+
+我们可以通过以下方法模拟 String 的 hashCode 方法：
+
+```java
+public class HashCodeExample {
+    public static void main(String[] args) {
+        String text = "沉默王二";
+        int hashCode = computeHashCode(text);
+        System.out.println("字符串 \"" + text + "\" 的哈希码是: " + hashCode);
+
+        System.out.println("String 的 hashCode " + text.hashCode());
+    }
+
+    public static int computeHashCode(String text) {
+        int h = 0;
+        for (int i = 0; i < text.length(); i++) {
+            h = 31 * h + text.charAt(i);
+        }
+        return h;
+    }
+}
+```
+
+看一下结果：
+
+```
+字符串 "沉默王二" 的哈希码是: 867758096
+String 的 hashCode 867758096
+```
+
+结果是一样的，又学到了吧？
 
 
 
 
 
+#### String 类的 substring 方法
 
+String 类中还有一个方法比较常用 substring，用来截取字符串的，来看源码。
 
+```java
+public String substring(int beginIndex) {
+    // 检查起始索引是否小于 0，如果是，则抛出 StringIndexOutOfBoundsException 异常
+    if (beginIndex < 0) {
+        throw new StringIndexOutOfBoundsException(beginIndex);
+    }
+    // 计算子字符串的长度
+    int subLen = value.length - beginIndex;
+    // 检查子字符串长度是否为负数，如果是，则抛出 StringIndexOutOfBoundsException 异常
+    if (subLen < 0) {
+        throw new StringIndexOutOfBoundsException(subLen);
+    }
+    // 如果起始索引为 0，则返回原字符串；否则，创建并返回新的字符串
+    return (beginIndex == 0) ? this : new String(value, beginIndex, subLen);
+}
+```
 
+substring 方法首先检查参数的有效性，如果参数无效，则抛出 StringIndexOutOfBoundsException [异常](https://javabetter.cn/exception/gailan.html)（后面会细讲）。接下来，方法根据参数计算子字符串的长度。如果子字符串长度小于零，也会抛出 StringIndexOutOfBoundsException 异常。
 
+如果 beginIndex 为 0，说明子串与原字符串相同，直接返回原字符串。否则，使用 value 数组（原字符串的字符数组）的一部分 new 一个新的 String 对象并返回。
+
+下面是几个使用 substring 方法的示例：
+
+①、提取字符串中的一段子串：
+
+```java
+String str = "Hello, world!";
+String subStr = str.substring(7, 12);  // 从第7个字符（包括）提取到第12个字符（不包括）
+System.out.println(subStr);  // 输出 "world"
+```
 
 
 
