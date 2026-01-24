@@ -740,6 +740,109 @@ $$SUBSTR(\text{string}, \text{start}, [\text{length}])$$
 
 
 
+
+
+## DATE_ADD
+
+在 SQL 中，处理日期加减最核心的函数就是 `DATE_ADD`。它就像是日期维度的“加法器”，让你能够轻松实现“昨天”、“下周”、“去年”等时间偏移计算。
+
+我们将从 **基础语法、时间单位、不同数据库的差异、以及实战场景** 四个维度来系统性拆解。
+
+------
+
+### 1. 语法结构
+
+在标准的 MySQL 语法中，`DATE_ADD` 的结构非常直观：
+
+$$DATE\_ADD(start\_date, INTERVAL\ expr\ unit)$$
+
+- **`start_date`**：起始日期。可以是 `DATE`（如 '2024-01-01'）或 `DATETIME`。
+- **`INTERVAL`**：关键字，告知数据库后面要进行时间间隔计算。
+- **`expr`**：数值。可以是正数（向后加），也可以是**负数**（向前减）。
+- **`unit`**：时间单位。
+
+------
+
+### 2. 时间单位 (Unit)
+
+`DATE_ADD` 强大之处在于它支持非常细致的单位，满足各种业务需求：
+
+| **单位 (Unit)** | **说明** | **示例 (加 1 单位)**                  |
+| --------------- | -------- | ------------------------------------- |
+| **SECOND**      | 秒       | `DATE_ADD(now(), INTERVAL 1 SECOND)`  |
+| **MINUTE**      | 分钟     | `DATE_ADD(now(), INTERVAL 1 MINUTE)`  |
+| **HOUR**        | 小时     | `DATE_ADD(now(), INTERVAL 1 HOUR)`    |
+| **DAY**         | 天       | `DATE_ADD(now(), INTERVAL 1 DAY)`     |
+| **WEEK**        | 周       | `DATE_ADD(now(), INTERVAL 1 WEEK)`    |
+| **MONTH**       | 月       | `DATE_ADD(now(), INTERVAL 1 MONTH)`   |
+| **QUARTER**     | 季度     | `DATE_ADD(now(), INTERVAL 1 QUARTER)` |
+| **YEAR**        | 年       | `DATE_ADD(now(), INTERVAL 1 YEAR)`    |
+
+复合单位（高级用法）：
+
+你甚至可以一次性加“1小时30分钟”：
+
+DATE_ADD('2024-01-01 00:00:00', INTERVAL '1:30' HOUR_MINUTE)
+
+------
+
+### 3. 变体
+
+虽然逻辑一致，但不同数据库的“方言”略有不同，这是最容易报错的地方：
+
+- **MySQL**: `DATE_ADD(date, INTERVAL 1 DAY)` 或简写为 `date + INTERVAL 1 DAY`。
+- **PostgreSQL**: `date + INTERVAL '1 day'`。
+- **SQL Server**: 使用 `DATEADD(day, 1, date)`（注意参数顺序不同）。
+- **SQLite**: 使用 `date(date, '+1 day')`。
+
+------
+
+### 4. 实战场景：它能解决什么问题？
+
+#### ① 计算“次日留存”或“昨天”
+
+在留存分析中，我们需要匹配“第一天”和“第二天”。
+
+```sql
+WHERE login_date_tomorrow = DATE_ADD(login_date_today, INTERVAL 1 DAY)
+```
+
+#### ② 自动过期判断
+
+找出 30 天内没有登录过的活跃用户：
+
+```sql
+SELECT user_id 
+FROM users 
+WHERE last_login < DATE_ADD(CURDATE(), INTERVAL -30 DAY); -- 用负数实现 DATE_SUB 的效果
+```
+
+#### ③ 财务报表：上个季度末
+
+```sql
+SELECT DATE_ADD('2024-04-01', INTERVAL -1 QUARTER); -- 得到 2024-01-01
+```
+
+------
+
+### 5. 常见坑点（避坑指南）
+
+1. 月末对齐问题：
+
+   如果你在 1 月 31 日加 1 个月，结果会变成 2 月 29 日（如果是闰年）或 2 月 28 日。它会自动处理月份天数的不一致，不会报错。
+
+2. 类型隐式转换：
+
+   如果 start_date 是字符串且格式不标准（如 '2024.01.01'），DATE_ADD 可能会返回 NULL 或报错。建议永远使用标准的 'YYYY-MM-DD' 格式。
+
+3. DATE_ADD vs DATE_SUB：
+
+   DATE_SUB(date, INTERVAL 1 DAY) 等同于 DATE_ADD(date, INTERVAL -1 DAY)。为了代码简洁，建议统一使用 DATE_ADD 配合正负数即可。
+
+
+
+
+
 ## UNION
 
 ### UNION vs. JOIN：维度的博弈
