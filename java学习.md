@@ -2614,6 +2614,8 @@ String s1 = "三妹";
 
 #### 详解 String.intern() 方法
 
+<span style="color:red">`intern()` 永远返回的是池里的**“原件”**地址。</span>
+
 `String.intern()` 确实是 Java 字符串面试中的“头号常客”。如果把字符串常量池比作一个**“高级俱乐部”**，那么 `intern()` 方法就是一张**“入场申请表”**。
 
 简单来说，`intern()` 的作用就是：**把一个原本在堆里的、零散的字符串对象，“注册”到全局统一的字符串常量池中。**
@@ -2659,7 +2661,570 @@ System.out.println(s1 == s2);                  // 结果是什么？
 
 
 
-## 其他
+
+
+我们来看两个例子:
+
+①
+
+```java
+String s1 = new String ("neil");
+String s2 =s1.intern();
+System.out.println(s1==s2);
+```
+
+首先,s1里的neil因为是new出来的,会有一个堆的地址,然后s1指向的是堆的地址,此时在第一步neil已经进入常量池了
+
+然后s1.inyern(),就是去常量池找内容相同的字符串,**找到了**：直接返回那个池子里的地址,(**没找到**：这是关键！它会把**当前字符串的引用（地址）**登记到常量池里，然后再返回这个地址。)
+
+所以s1->堆的地址,而<span style="color:red">`intern()` 永远返回的是池里的**“原件”**地址。</span>所以s2是常量池的地址,结果为false;
+
+
+
+②
+
+```java
+String s1 = new String("1")+new String("1");
+String s2 = s1.intern();
+System.out.println(s1==s2);
+```
+
+在这个例子里又有一些发生变化了,此时常量池里只有1,s1的"11"是拼接出来的,
+
+所以inter()在常量池里面没有发现"11"的内容,这时候,为了节省内存,池子说：“既然堆里已经有一个现成的 `s1` 了，我就别再造一个了。我直接**存一个指向 `s1` 的地址**吧！”
+
+`intern()` 把这个指向 `s1` 的地址返回给了 `s2`。
+
+所以s1和s2的地址其实是一样的,结果为true;
+
+
+
+
+
+详细的过程:
+
+1. 创建 "二哥" 字符串对象，存储在字符串常量池中。
+2. 创建 "三妹" 字符串对象，存储在字符串常量池中。
+3. 执行 `new String("二哥")`，在堆上创建一个字符串对象，内容为 "二哥"。
+4. 执行 `new String("三妹")`，在堆上创建一个字符串对象，内容为 "三妹"。
+5. 执行 `new String("二哥") + new String("三妹")`，会创建一个 StringBuilder 对象，并将 "二哥" 和 "三妹" 追加到其中，然后调用 StringBuilder 对象的 toString() 方法，将其转换为一个新的字符串对象，内容为 "二哥三妹"。这个新的字符串对象存储在堆上。
+
+也就是说，当编译器遇到 `+` 号这个操作符的时候，会将 `new String("二哥") + new String("三妹")` 这行代码编译为以下代码：
+
+```java
+new StringBuilder().append("二哥").append("三妹").toString();
+```
+
+实际执行过程如下：
+
+- 创建一个 StringBuilder 对象。
+- 在 StringBuilder 对象上调用 append("二哥")，将 "二哥" 追加到 StringBuilder 中。
+- 在 StringBuilder 对象上调用 append("三妹")，将 "三妹" 追加到 StringBuilder 中。
+- 在 StringBuilder 对象上调用 toString() 方法，将 StringBuilder 转换为一个新的字符串对象，内容为 "二哥三妹"。
+
+
+
+不过需要注意的是，尽管 intern 可以确保所有具有相同内容的字符串共享相同的内存空间，但也不要烂用 intern，因为任何的缓存池都是有大小限制的，不能无缘无故就占用了相对稀缺的缓存空间，导致其他字符串没有坑位可占。
+
+另外，字符串常量池本质上是一个固定大小的 StringTable，如果放进去的字符串过多，就会造成严重的哈希冲突，从而导致链表变长，链表变长也就意味着字符串常量池的性能会大幅下降，因为要一个一个找是需要花费时间的。
+
+
+
+#### StringBuilder和StringBuffer
+
+区别:
+
+由于[字符串是不可变的](https://javabetter.cn/string/immutable.html)，所以当遇到[字符串拼接](https://javabetter.cn/string/join.html)（尤其是使用`+`号操作符）的时候，就需要考量性能的问题，你不能毫无顾虑地生产太多 String 对象，对珍贵的内存造成不必要的压力。
+
+于是 Java 就设计了一个专门用来解决此问题的 StringBuffer 类。
+
+```java
+public final class StringBuffer extends AbstractStringBuilder implements Serializable, CharSequence {
+
+    public StringBuffer() {
+        super(16);
+    }
+    
+    public synchronized StringBuffer append(String str) {
+        super.append(str);
+        return this;
+    }
+
+    public synchronized String toString() {
+        return new String(value, 0, count);
+    }
+
+    // 其他方法
+}
+```
+
+不过，由于 StringBuffer 操作字符串的方法加了 [`synchronized` 关键字](https://javabetter.cn/thread/synchronized-1.html)进行了同步，主要是考虑到多线程环境下的安全问题，所以如果在非多线程环境下，执行效率就会比较低，因为加了没必要的锁。
+
+于是 Java 就给 StringBuffer “生了个兄弟”，名叫 StringBuilder，说，“孩子，你别管线程安全了，你就在单线程环境下使用，这样效率会高得多，如果要在多线程环境下修改字符串，你到时候可以使用 [`ThreadLocal`](https://javabetter.cn/thread/ThreadLocal.html) 来避免多线程冲突。”
+
+```java
+public final class StringBuilder extends AbstractStringBuilder
+    implements java.io.Serializable, CharSequence
+{
+    // ...
+
+    public StringBuilder append(String str) {
+        super.append(str);
+        return this;
+    }
+
+    public String toString() {
+        // Create a copy, don't share the array
+        return new String(value, 0, count);
+    }
+
+    // ...
+}
+```
+
+除了类名不同，方法没有加 synchronized，基本上完全一样。
+
+实际开发中，StringBuilder 的使用频率也是远高于 StringBuffer，甚至可以这么说，StringBuilder 完全取代了 StringBuffer。
+
+
+
+之前讲过:Java 是一门解释型的编程语言，所以当编译器遇到 `+` 号这个操作符的时候，会将 `new String("二哥") + new String("三妹")` 这行代码解释为以下代码：
+
+```java
+new StringBuilder().append("二哥").append("三妹").toString();
+```
+
+这个过程是我们看不见的，但这正是 Java 的“智能”之处，它可以在编译的时候偷偷地帮我们做很多优化，这样既可以提高我们的开发效率（`+` 号写起来比创建 StringBuilder 对象便捷得多），也不会影响 JVM 的执行效率。
+
+当然了，如果我们使用 [javap](https://javabetter.cn/jvm/bytecode.html) 反编译 `new String("二哥") + new String("三妹")` 的字节码的时候，也是能看出 StringBuilder 的影子的。
+
+> [javap 和字节码](https://javabetter.cn/jvm/bytecode.html)会在后面讲 JVM 的时候详细讲解，戳链接了解详情。
+
+```java
+0: new           #2                  // class java/lang/StringBuilder
+3: dup
+4: invokespecial #3                  // Method java/lang/StringBuilder."<init>":()V
+7: new           #4                  // class java/lang/String
+10: dup
+11: ldc           #5                  // String 二哥
+13: invokespecial #6                  // Method java/lang/String."<init>":(Ljava/lang/String;)V
+16: invokevirtual #7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+19: new           #4                  // class java/lang/String
+22: dup
+23: ldc           #8                  // String 三妹
+25: invokespecial #6                  // Method java/lang/String."<init>":(Ljava/lang/String;)V
+28: invokevirtual #7                  // Method java/lang/StringBuilder.append:(Ljava/lang/String;)Ljava/lang/StringBuilder;
+31: invokevirtual #9                  // Method java/lang/StringBuilder.toString:()Ljava/lang/String;
+34: areturn
+```
+
+可以看到 Java 编译器将字符串拼接操作（`+`）转换为了 StringBuilder 对象的 append 方法，然后再调用 StringBuilder 对象的 toString 方法返回拼接后的字符串。
+
+
+
+**StringBuilder的内部实现**
+
+来看一下 StringBuilder 的 toString 方法：
+
+```JAVA
+public String toString() {
+    return new String(value, 0, count);
+}
+```
+
+value 是一个 char 类型的[数组](https://javabetter.cn/array/array.html)：
+
+```JAVA
+/**
+ * The value is used for character storage.
+ */
+char[] value;
+```
+
+在 StringBuilder 对象创建时，会为 value 分配一定的内存空间（初始容量 16），用于存储字符串。
+
+```JAVA
+/**
+ * Constructs a string builder with no characters in it and an
+ * initial capacity of 16 characters.
+ */
+public StringBuilder() {
+    super(16);
+}
+```
+
+随着字符串的拼接，value 数组的长度会不断增加，因此在 StringBuilder 对象的实现中，value 数组的长度是可以[动态扩展的，就像ArrayList那样](https://javabetter.cn/collection/arraylist.html)。
+
+继续来看 StringBuilder 的 toString 方法：
+
+```JAVA
+public String toString() {
+    return new String(value, 0, count);
+}
+```
+
+value 用于存储 StringBuilder 对象中包含的字符序列。count 是一个 int 类型的变量，表示字符序列的长度。toString() 方法会调用 `new String(value, 0, count)`，使用 value 数组中从 0 开始的前 count 个元素创建一个新的字符串对象，并将其返回。
+
+再来看一下 append 方法：
+
+```JAVA
+public StringBuilder append(String str) {
+    super.append(str);
+    return this;
+}
+```
+
+实际上是调用了 AbstractStringBuilder 中的 `append(String str)` 方法。在 AbstractStringBuilder 中，`append(String str)` 方法会检查当前字符序列中的字符是否够用，如果不够用则会进行扩容，并将指定字符串追加到字符序列的末尾。
+
+```java
+public AbstractStringBuilder append(String str) {
+    if (str == null)
+        return appendNull();
+    int len = str.length();
+    ensureCapacityInternal(count + len);
+    str.getChars(0, len, value, count);
+    count += len;
+    return this;
+}
+```
+
+**为什么要返回 this？**：这就是为什么你可以写 **链式调用** 的原因，比如：`sb.append("A").append("B").append("C");`。因为每次 `append` 完，它又把自己交还给了你。
+
+
+
+来看一下 ensureCapacityInternal 方法：
+
+```java
+private void ensureCapacityInternal(int minimumCapacity) {
+    // 不够用了，扩容
+    if (minimumCapacity - value.length > 0)
+        expandCapacity(minimumCapacity);
+}
+
+void expandCapacity(int minimumCapacity) {
+    // 扩容策略：新容量为旧容量的两倍加上 2
+    int newCapacity = value.length * 2 + 2;
+    // 如果新容量小于指定的最小容量，则新容量为指定的最小容量
+    if (newCapacity - minimumCapacity < 0)
+        newCapacity = minimumCapacity;
+    // 如果新容量小于 0，则新容量为 Integer.MAX_VALUE
+    if (newCapacity < 0) {
+        if (minimumCapacity < 0) // overflow
+            throw new OutOfMemoryError();
+        newCapacity = Integer.MAX_VALUE;
+    }
+    // 将字符序列的容量扩容到新容量的大小
+    value = Arrays.copyOf(value, newCapacity);
+}
+```
+
+`ensureCapacityInternal(int minimumCapacity)` 方法用于确保当前字符序列的容量至少等于指定的最小容量 minimumCapacity。如果当前容量小于指定的容量，就会为字符序列分配一个新的内部数组。新容量的计算方式如下：
+
+- 如果指定的最小容量大于当前容量，则新容量为两倍的旧容量加上 2。为什么要加 2 呢？对于非常小的字符串（比如空的或只有一个字符的 StringBuilder），仅仅将容量加倍可能仍然不足以容纳更多的字符。在这种情况下，+ 2 提供了一个最小的增长量，确保即使对于很小的初始容量，扩容后也能至少添加一些字符而不需要立即再次扩容。
+- 如果指定的最小容量小于等于当前容量，则不会进行扩容，直接返回当前对象.
+
+在进行扩容之前，`ensureCapacityInternal(int minimumCapacity)` 方法会先检查当前字符序列的容量是否足够，如果不足就会调用 `expandCapacity(int minimumCapacity)` 方法进行扩容。`expandCapacity(int minimumCapacity)` 方法首先计算出新容量，然后使用 `Arrays.copyOf(char[] original, int newLength)` 方法将原字符数组扩容到新容量的大小。
+
+> - [Arrays](https://javabetter.cn/common-tool/arrays.html) 是 Java 中用于操作数组的工具类，后面也会讲到。
+> - 关于扩容，后面在讲[ArrayList](https://javabetter.cn/collection/arraylist.html)的时候会再次说明，到时候你可以回头对比来看一下，因为 ArrayList 底部实现也是数组。
+
+**StringBuilder的 reverse 方法**
+
+StringBuilder 还提供了一个 reverse 方法，用于反转当前字符序列中的字符。
+
+```java
+public StringBuilder reverse() {
+    super.reverse();
+    return this;
+}
+```
+
+也是调用了父类 AbstractStringBuilder 中的 `reverse()` 方法，我把一些非核心代码剔除掉了。
+
+```java
+public AbstractStringBuilder reverse() {
+    int n = count - 1; // 字符序列的最后一个字符的索引
+    // 遍历字符串的前半部分
+    for (int j = (n-1) >> 1; j >= 0; j--) {
+        int k = n - j; // 计算相对于 j 对称的字符的索引
+        char cj = value[j]; // 获取当前位置的字符
+        char ck = value[k]; // 获取对称位置的字符
+        value[j] = ck; // 交换字符
+        value[k] = cj; // 交换字符
+    }
+    return this; // 返回反转后的字符串构建器对象
+}
+```
+
+
+
+1. **初始化**： `n` 是字符串中最后一个字符的索引。
+2. 字符串反转：
+   - 方法通过一个 `for` 循环遍历字符串的前半部分和后半部分，这是一个非常巧妙的点，比从头到尾遍历省了一半的时间。`(n-1) >> 1` 是 `(n-1) / 2` 的位运算表示，也就是字符串的前半部分的最后一个字符的索引。
+   - 在每次迭代中，计算出与当前索引 `j` 对称的索引 `k`，并交换这两个索引位置的字符。
+
+LeetCode 的第 7 题《[007.整数反转](https://leetcode-cn.com/problems/reverse-integer/)》要求我们反转一个整数，其实就可以借助 StringBuilder 的 reverse 方法来实现。
+
+
+
+
+
+一定要记得：`reverse()` 会**改变原对象**的内容！
+
+```java
+StringBuilder sb = new StringBuilder("Java");
+sb.reverse(); 
+System.out.println(sb); // 输出 avaJ，原来的 Java 已经找不回来了
+```
+
+如果你想保留原字符串，记得先 `new` 一个新的 `StringBuilder` 再反转。
+
+
+
+
+
+#### equals()与==的区别
+
+直接说结论:
+
+- ==”操作符用于比较两个对象的地址是否相等。
+- `.equals()` 方法用于比较两个对象的内容是否相等。
+
+```java
+String mangseng = new String("Champion");
+String jiaoyue = new String("Champion");
+
+System.out.println(mangseng.equals(jiaoyue));
+System.out.println(mangseng == jiaoyue);
+```
+
+就上面这段代码来说，`.equals()` 输出的结果为 true，而“==”操作符输出的结果为 false——前者要求内容相等就可以，后者要求必须是同一个对象。
+
+Java 的所有类都默认地继承 Object 这个超类，该类有一个名为 `.equals()` 的方法。”一边说，我一边打开了 Object 类的源码。
+
+```java
+public boolean equals(Object obj) {
+    return (this == obj);
+}
+```
+
+你看，Object 类的 `.equals()` 方法默认采用的是`==`操作符进行比较。假如子类没有重写该方法的话，那么`==`操作符和 `.equals()` 方法的功效就完全一样——比较两个对象的内存地址是否相等。
+
+但实际情况中，有不少类重写了 `.equals()` 方法，因为比较内存地址的要求比较严格，不太符合现实中所有的场景需求。拿 String 类来说，我们在比较字符串的时候，的确只想判断它们俩的内容是相等的就可以了，并不想比较它们俩是不是同一个对象。
+
+况且，字符串有[字符串常量池](https://javabetter.cn/string/constant-pool.html)的概念，本身就推荐使用 `String s = "字符串"` 这种形式来创建字符串对象，而不是通过 new 关键字的方式，因为可以把字符串缓存在字符串常量池中，方便下次使用，不用遇到 new 就在堆上开辟一块新的空间。
+
+
+
+来看一下 String 类的 `.equals()` 方法的源码
+
+```java
+public boolean equals(Object anObject) {
+    if (this == anObject) {
+        return true;
+    }
+    if (anObject instanceof String) {
+        String aString = (String)anObject;
+        if (coder() == aString.coder()) {
+            return isLatin1() ? StringLatin1.equals(value, aString.value)
+                    : StringUTF16.equals(value, aString.value);
+        }
+    }
+    return false;
+}
+```
+
+首先，如果两个字符串对象的可以“==”，那就直接返回 true 了，因为这种情况下，字符串内容是必然相等的。否则就按照字符编码进行比较，分为 UTF16 和 Latin1，差别不是很大，就拿 Latin1 的来说吧。
+
+```java
+@HotSpotIntrinsicCandidate
+public static boolean equals(byte[] value, byte[] other) {
+    if (value.length == other.length) {
+        for (int i = 0; i < value.length; i++) {
+            if (value[i] != other[i]) {
+                return false;
+            }
+        }
+        return true;
+    }
+    return false;
+}
+```
+
+这个 JDK 版本是 Java 17，也就是最新的 LTS（长期支持）版本。该版本中，String 类使用字节数组实现的，所以比较两个字符串的内容是否相等时，可以先比较字节数组的长度是否相等，不相等就直接返回 false；否则就遍历两个字符串的字节数组，只有有一个字节不相等，就返回 false。
+
+这是 Java 8 中的 equals 方法源码：
+
+```java
+public boolean equals(Object anObject) {
+    // 判断是否为同一对象
+    if (this == anObject) {
+        return true;
+    }
+    // 判断对象是否为 String 类型
+    if (anObject instanceof String) {
+        String anotherString = (String)anObject;
+        int n = value.length;
+        // 判断字符串长度是否相等
+        if (n == anotherString.value.length) {
+            char v1[] = value;// 这里的 value 是 A 的电池
+            char v2[] = anotherString.value;
+            int i = 0;
+            // 判断每个字符是否相等
+            while (n-- != 0) {
+                if (v1[i] != v2[i])
+                    return false;
+                i++;
+            }
+            return true;
+        }
+    }
+    return false;
+}
+```
+
+值得注意的是`instanceof` 是给“运行期”看的，而 `(String)` 强制转换是给“编译器”看的。
+
+JDK 8 比 JDK 17 更容易懂一些：首先判断两个对象是否为同一个对象，如果是，则返回 true。接着，判断对象是否为 String 类型，如果不是，则返回 false。如果对象为 String 类型，则比较两个字符串的长度是否相等，如果长度不相等，则返回 false。如果长度相等，则逐个比较每个字符是否相等，如果都相等，则返回 true，否则返回 false。
+
+
+
+
+
+
+
+一些练习:
+
+第一题：
+
+```java
+new String("小萝莉").equals("小萝莉")
+```
+
+第二题：
+
+```java
+new String("小萝莉") == "小萝莉"
+```
+
+第三题：
+
+```
+new String("小萝莉") == new String("小萝莉")
+```
+
+第四题：
+
+```java
+"小萝莉" == "小萝莉"
+```
+
+第五题：
+
+```java
+"小萝莉" == "小" + "萝莉"
+```
+
+第六题：
+
+```java
+new String("小萝莉").intern() == "小萝莉"
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+答案如下
+
+________________
+
+
+
+
+
+
+
+✔
+
+❌
+
+❌
+
+✔
+
+✔
+
+✔注意:<span style="color:red">`intern()` 永远返回的是池里的**“原件”**地址。</span>
+
+
+
+如果要进行两个字符串对象的内容比较，除了 `.equals()` 方法，还有其他两个可选的方案。
+**1）`Objects.equals()`**
+
+`Objects.equals()` 这个静态方法的优势在于不需要在调用之前判空。
+
+```JAVA
+public static boolean equals(Object a, Object b) {
+    return (a == b) || (a != null && a.equals(b));
+}
+```
+
+如果直接使用 `a.equals(b)`，则需要在调用之前对 a 进行判空，否则可能会抛出空指针 `java.lang.NullPointerException`。`Objects.equals()` 用起来就完全没有这个担心。
+
+| **写法**                                                    | **安全性**                   | **代码观感**               |
+| ----------------------------------------------------------- | ---------------------------- | -------------------------- |
+| **`a.equals(b)`**                                           | **高危**（a 为 null 直接崩） | 简洁但危险                 |
+| **`a != null && a.equals(b)`**                              | 安全                         | 稍微有点丑，每次都要重复写 |
+| <span style="color:green">**`Objects.equals(a, b)`**</span> | **绝对安全**                 | **优雅、现代、易读**       |
+
+
+
+
+
+**2) String 类的 `.contentEquals()`**
+
+`.contentEquals()` 的优势在于可以将字符串与任何的字符序列（StringBuffer、StringBuilder、String、CharSequence）进行比较。
+
+<span style="color:blue">//TODO</span>
+
+未来考虑完成这部分
+
+
+
+## <span style="color:red">Java面向对象</span>
+
+由于面向对象太过于重要因此虽然属于Java基础部分但由于md格式,单独拎出来以便更好的设计子标题
+
+### Java中的类和对象
+
+#### 1.面向过程和面向对象
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+# 其他
 
 ### `Class`(大写C)和`class`(小写c)的区别
 
