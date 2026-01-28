@@ -3924,7 +3924,7 @@ public class Test {
 
 ### package 包
 
-#### [关于包](https://javabetter.cn/oo/package.html#关于包)
+#### [01 关于包](https://javabetter.cn/oo/package.html#关于包)
 
 在前面的代码中，我们把类和接口命名为`Person`、`Student`、`Hello`等简单的名字。
 
@@ -4014,7 +4014,7 @@ javac -d ../bin ming/Person.java hong/Person.java mr/jun/Arrays.java
 
 
 
-#### [包的作用域](https://javabetter.cn/oo/package.html#包的作用域)
+#### [02 包的作用域](https://javabetter.cn/oo/package.html#包的作用域)
 
 位于同一个包的类，可以访问包作用域的字段和方法。
 
@@ -4046,7 +4046,7 @@ public class Main {
 
 
 
-#### [导入包](https://javabetter.cn/oo/package.html#导入包)
+#### [03 导入包](https://javabetter.cn/oo/package.html#导入包)
 
 在一个`class`中，我们总会引用其他的`class`。例如，小明的`ming.Person`类，如果要引用小军的`mr.jun.Arrays`类，他有三种写法：
 
@@ -4159,7 +4159,7 @@ public class Main {
 
 
 
-#### [包的最佳实践](https://javabetter.cn/oo/package.html#包的最佳实践)
+#### [04 包的最佳实践](https://javabetter.cn/oo/package.html#包的最佳实践)
 
 为了避免名字冲突，我们需要确定唯一的包名。推荐的做法是使用倒置的域名来确保唯一性。例如：
 
@@ -4183,7 +4183,7 @@ public class Main {
 - java.math.BigInteger
 - ...
 
-#### [小结](https://javabetter.cn/oo/package.html#小结)
+#### [05 小结](https://javabetter.cn/oo/package.html#小结)
 
 Java 内建的`package`机制是为了避免`class`命名冲突；
 
@@ -4195,7 +4195,674 @@ JDK 的其它常用类定义在`java.util.*`，`java.math.*`，`java.text.*`，�
 
 
 
+### Java变量
 
+Java 变量就好像一个容器，可以保存程序在运行过程中的值，它在声明的时候会定义对应的[数据类型](https://javabetter.cn/basic-grammar/basic-data-type.html)（Java 分为两种数据类型：基本数据类型和引用数据类型）。变量按照作用域的范围又可分为三种类型：局部变量，成员变量和静态变量。
+
+比如说，`int data = 88;`，其中 data 就是一个变量，它的值为 88，类型为整型（int）。
+
+#### [01、局部变量](https://javabetter.cn/oo/var.html#_01、局部变量)
+
+在方法体内声明的变量被称为局部变量，该变量只能在该方法内使用，类中的其他方法并不知道该变量。来看下面这个示例：
+
+```java
+public class LocalVariable {
+    public static void main(String[] args) {
+        int a = 10;
+        int b = 10;
+        int c = a + b;
+        System.out.println(c);
+    }
+}
+```
+
+其中 a、b、c 就是局部变量，它们只能在当前这个 main 方法中使用。
+
+声明局部变量时的注意事项：
+
+- 局部变量声明在方法、构造方法或者语句块中。
+- 局部变量在方法、构造方法、或者语句块被执行的时候创建，当它们执行完成后，将会被销毁。
+- 访问修饰符不能用于局部变量。
+- 局部变量只在声明它的方法、构造方法或者语句块中可见。
+- 局部变量是在栈上分配的。
+- 局部变量没有默认值，所以局部变量被声明后，必须经过初始化，才可以使用。
+
+
+
+#### [02、成员变量](https://javabetter.cn/oo/var.html#_02、成员变量)
+
+在类内部但在方法体外声明的变量称为成员变量，或者实例变量，或者字段。之所以称为实例变量，是因为该变量只能通过类的实例（对象）来访问。来看下面这个示例：
+
+```java
+public class InstanceVariable {
+    int data = 88;
+    public static void main(String[] args) {
+        InstanceVariable iv = new InstanceVariable();
+        System.out.println(iv.data); // 88
+    }
+}
+```
+
+其中 iv 是一个变量，它是一个引用类型的变量。`new` 关键字可以创建一个类的实例（也称为对象），通过“=”操作符赋值给 iv 这个变量，iv 就成了这个对象的引用，通过 `iv.data` 就可以访问成员变量了。
+
+声明成员变量时的注意事项：
+
+- 成员变量声明在一个类中，但在方法、构造方法和语句块之外。
+- 当一个对象被实例化之后，每个成员变量的值就跟着确定。
+- 成员变量在对象创建的时候创建，在对象被销毁的时候销毁。
+- 成员变量的值应该至少被一个方法、构造方法或者语句块引用，使得外部能够通过这些方式获取实例变量信息。
+- 成员变量可以声明在使用前或者使用后。
+- 访问修饰符可以修饰成员变量。
+- 成员变量对于类中的方法、构造方法或者语句块是可见的。一般情况下应该把成员变量设为私有。通过使用访问修饰符可以使成员变量对子类可见；成员变量具有默认值。数值型变量的默认值是 0，布尔型变量的默认值是 false，引用类型变量的默认值是 null。变量的值可以在声明时指定，也可以在构造方法中指定。
+
+
+
+<span style="color:orange">**（面试）成员变量 vs. 局部变量**</span>
+
+| **特性**     | **成员变量 (Member)**                    | **局部变量 (Local)**               |
+| ------------ | ---------------------------------------- | ---------------------------------- |
+| **定义位置** | 类中，方法外                             | 方法内或参数列表                   |
+| **内存位置** | **堆 (Heap)**（随对象存在）              | **栈 (Stack)**（随方法调用存在）   |
+| **生命周期** | 对象创建时出生，对象被回收时死亡         | 方法开始执行出生，方法结束死亡     |
+| **默认值**   | **有默认值**（int是0, boolean是false等） | **没有默认值**，不赋值直接用会报错 |
+
+
+
+<span style="color:orange">**(面试)初始化的先后顺序**</span>
+
+如果类里既有成员变量赋值，又有构造函数，谁先执行？
+
+**执行顺序如下：**
+
+1. **静态变量/静态代码块**（类加载时执行，仅一次）。
+2. **成员变量默认初始化**（比如 int 变成 0）。
+3. **成员变量显式赋值**（比如你写的 `int data = 88;`）。
+4. **构造函数**（最后进行最后的装潢）。
+
+> [!NOTE] **面试坑点：** 如果你在构造函数里改了成员变量的值，那么最后生效的是构造函数里的值。
+
+
+
+<span style="color:orange">**(面试)两个特殊的修饰符**</span>
+
+在成员变量面前，除了 `public/private`，面试官最爱问这两个：
+
+① `final` (终身制)
+
+一旦给成员变量加了 `final`，它就变成了**常量**。
+
+- **注意：** 你必须在对象造好之前（要么声明时，要么在构造函数里）给它赋值，否则编译器会抗议。赋值后，再也不能改。
+
+② `static` (公有制)
+
+- 不加 `static`：每个对象都有一份独立的副本（比如每个英雄都有自己的血条）。
+- 加上 `static`：所有对象共享同一个变量（比如所有英雄共享同一个“游戏版本号”）。
+
+
+
+<span style="color:orange">**(面试)进阶避雷点：变量名冲突 (Shadowing)**</span>
+
+如果你在方法里定义了一个和成员变量**同名**的局部变量，会发生什么？
+
+```java
+public class Hero {
+    int health = 100; // 成员变量
+
+    public void takeDamage(int health) { // 参数也叫 health
+        // 这里的 health 指的是参数（局部变量）
+        // 如果想访问成员变量，必须加 this
+        this.health = health; 
+    }
+}
+```
+
+**面试官会问：** “如果我不加 `this`，这行代码在干什么？” **标准回答：** “这叫**变量屏蔽**。不加 `this`，你只是在把局部变量赋给自己，成员变量的值完全没变。”
+
+
+
+#### [03、静态变量](https://javabetter.cn/oo/var.html#_03、静态变量)
+
+通过 [static 关键字](https://javabetter.cn/oo/static.html)声明的变量被称为静态变量（类变量），它可以直接被类访问，来看下面这个示例：
+
+```java
+public class StaticVariable {
+    static int data = 99;
+    public static void main(String[] args) {
+        System.out.println(StaticVariable.data); // 99
+    }
+}
+```
+
+其中 data 就是静态变量，通过`类名.静态变量`就可以访问了，不需要创建类的实例。
+
+声明静态变量时的注意事项：
+
+- 静态变量在类中以 static 关键字声明，但必须在方法构造方法和语句块之外。
+- 无论一个类创建了多少个对象，类只拥有静态变量的一份拷贝。
+- <span style = "color:red">静态变量除了被声明为常量外很少使用。</span>
+- 静态变量储存在静态存储区。
+- 静态变量在程序开始时创建，在程序结束时销毁。
+- 与成员变量具有相似的可见性。但为了对类的使用者可见，大多数静态变量声明为 public 类型。
+- 静态变量的默认值和实例变量相似。
+- 静态变量还可以在静态语句块中初始化。
+
+
+
+换言之,`static`（静态）就是一个“共享”标记。
+
+在 Java 中，如果你给一个成员加上 `static`，它就不再属于某个具体的“对象”了，而是属于整个“类”。
+
+形象比喻：饮水机 vs 水杯
+
+- **实例变量**：像每个员工自己桌上的**水杯**。张三喝光了自己杯里的水，李四的杯子还是满的。
+- **静态变量**：像办公室里的**大饮水机**。张三把饮水机里的水喝光了，李四去接水时也发现没水了。
+
+
+
+**`static` 的核心特征**
+
+① “先于对象而存在”
+
+静态变量在类被加载时（JVM 第一次看到这个类时）就已经出生了。这时候你甚至还没写 `new`，它就已经在内存里待命了。
+
+② “一处改，处处改”
+
+因为所有对象指向的都是同一个静态地址，所以任何一个对象修改了静态变量，其他对象看到的值都会变。
+
+③ “通过类名直接访问”
+
+你不需要 `new` 一个对象，直接用 `类名.变量名` 就能拿到它。
+
+
+
+```java
+public class Champion {
+    public String name;          // 实例变量：每个英雄名字不同
+    public static String game;   // 静态变量：所有英雄都在同一个游戏里
+
+    public static void main(String[] args) {
+        // 直接通过类名赋值，不需要 new
+        Champion.game = "英雄联盟"; 
+
+        Champion c1 = new Champion();
+        c1.name = "亚索";
+
+        Champion c2 = new Champion();
+        c2.name = "提莫";
+
+        System.out.println(c1.name + " 在玩 " + c1.game);
+        System.out.println(c2.name + " 在玩 " + c2.game);
+        
+        // 如果改了静态变量
+        c1.game = "金铲铲"; 
+        
+        // c2 的 game 也会跟着变！
+        System.out.println(c2.name + " 也在玩 " + c2.game); 
+    }
+}
+```
+
+
+
+**什么时候该用 `static`？**
+
+并不是所有变量都要加 `static`，只有符合以下情况时才考虑：
+
+1. **数据共享**：比如总人数计数器、全局配置信息、公用的常量（如 `Math.PI`）。
+2. **工具类方法**：比如 `Arrays.sort()` 或 `Math.abs()`。你不需要创建一个“数学对象”才能算绝对值，直接用就行。
+3. **单例模式**：确保整个程序只有一个实例。
+
+
+
+**<span style="color:red">!!一个必须要警惕的限制!!</span>**
+
+**<span style="color:red">静态方法里不能直接访问非静态成员！</span>**
+
+> **原因：** 静态方法（比如 `main`）出生的时候，对象可能还没 `new` 出来。就像“祖先”不能花“重孙子”兜里的钱，因为重孙子那时候还没出生呢！
+
+
+
+
+
+<span style="color:orange">**(面试)静态变量 vs 实例变量**</span>
+
+| **特性**     | **静态变量 (static)**        | **实例变量 (非 static)**       |
+| ------------ | ---------------------------- | ------------------------------ |
+| **所属关系** | 属于 **类** (Class)          | 属于 **对象** (Instance)       |
+| **内存位置** | **方法区 / 元空间**          | **堆内存**                     |
+| **出现时间** | **类加载时** (早)            | **对象创建时** (晚)            |
+| **访问方式** | `类名.变量名` (推荐)         | `对象名.变量名`                |
+| **生命周期** | 随类的加载而生，随类卸载而死 | 随对象创建而生，随对象回收而死 |
+
+
+
+ **Q1: 为什么静态变量住在“方法区”或“元空间”？**
+
+A1:首先要分清两个概念：**“逻辑概念”和“物理实现”**。
+
+- **方法区（Method Area）** 是 JVM 规范里的一个**逻辑区域**。它就像是一个“公共图书馆”，里面存放的是所有类的“设计图纸”（类信息、常量池、方法代码等）。
+- **元空间（Metaspace）** 是 Java 8 之后对方法区的**具体物理实现**。
+
+**为什么静态变量要放在这？**
+
+因为静态变量属于**类**，而不属于**对象**。
+
+- **堆（Heap）** 是用来放“实物”（对象）的。每一个 `new` 出来的对象都在堆里占一块地。
+- **方法区/元空间** 是用来放“规则”的。
+
+这两个问题直接戳中了 Java 内存模型和类加载机制的核心。我们把这两个硬核知识点拆解成通俗易懂的逻辑。
+
+------
+
+**为什么静态变量住在“方法区”或“元空间”？**
+
+首先要分清两个概念：**“逻辑概念”和“物理实现”**。
+
+- **方法区（Method Area）** 是 JVM 规范里的一个**逻辑区域**。它就像是一个“公共图书馆”，里面存放的是所有类的“设计图纸”（类信息、常量池、方法代码等）。
+- **元空间（Metaspace）** 是 Java 8 之后对方法区的**具体物理实现**。
+
+**为什么静态变量要放在这？**
+
+因为静态变量属于**类**，而不属于**对象**。
+
+- **堆（Heap）** 是用来放“实物”（对象）的。每一个 `new` 出来的对象都在堆里占一块地。
+- **方法区/元空间** 是用来放“规则”的。
+
+如果静态变量放在堆里，由于堆里的对象会被垃圾回收（GC）频繁清理，而静态变量通常需要**随类共存亡**（类不卸载，变量就不消失），所以把它放在存放类信息的区域是最合理的。
+
+**技术变迁小贴士（面试加分项）：** 实际上，在 **Java 8** 之后，静态变量的“数据本体”被挪到了堆（Heap）中一个特殊的 `Class` 对象末尾，但我们逻辑上依然认为它属于**方法区**的范畴，因为它的生命周期是由类加载器决定的，而不是由 `new` 决定的。
+
+
+
+**理解“静态不能访问非静态”：时空错位**
+
+**时间维度：出生顺序不同**
+
+1. **静态成员（祖先）**：在类被加载的时候就“出生”了。此时，内存里可能一个对象都没有。
+2. **非静态成员（重孙子）**：只有在你执行 `new` 的那一刻才出生。
+
+**逻辑悖论：** 当 `main` 方法（静态）运行的时候，它就像一个**时空旅行者**回到了过去。它想调用一个 `name` 变量，但此时 `new Person()` 还没执行，`name` 根本还没出生。编译器为了防止你“访问一个不存在的东西”，直接在编译阶段就报错。
+
+**空间维度：找不到目标**
+
+非静态变量必须依赖于**具体的对象**。
+
+假设你写了：
+
+```JAVA
+public class Student {
+    String name; // 非静态
+    
+    public static void printName() {
+        System.out.println(name); // 报错！
+    }
+}
+```
+
+如果你 `new` 了 100 个学生，每个学生的名字都不同。当你在静态方法 `printName` 里调用 `name` 时，JVM 会很困惑：**“大哥，这儿有 100 个名字，你到底要我打印哪一个？”**
+
+因为静态方法里没有 `this` 指针，它抓不住具体的任何一个实例。
+
+
+
+#### [04、常量](https://javabetter.cn/oo/var.html#_04、常量)
+
+在 Java 中，有些数据的值是不会发生改变的，这些数据被叫做常量——使用 [final 关键字](https://javabetter.cn/oo/final.html)修饰的成员变量。常量的值一旦给定就无法改变！
+
+常量在程序运行过程中主要有 2 个作用：
+
+- 代表常数，便于修改（例如：圆周率的值，`final double PI = 3.14`）
+- 增强程序的可读性（例如：常量 UP、DOWN 用来代表上和下，`final int UP = 0`）
+
+Java 要求常量名必须大写。来看下面这个示例：
+
+```java
+public class FinalVariable {
+    final String CHEN = "沉";
+    static final String MO = "默";
+    public static void main(String[] args) {
+        FinalVariable fv = new FinalVariable();
+        System.out.println(fv.CHEN);
+        System.out.println(MO);
+    }
+}
+```
+
+
+
+### Java中的方法
+
+#### [01、Java中的方法是什么？](https://javabetter.cn/oo/method.html#_01、java中的方法是什么)
+
+方法用来实现代码的可重用性，我们编写一次方法，并多次使用它。通过增加或者删除方法中的一部分代码，就可以提高整体代码的可读性。
+
+只有方法被调用时，它才会执行。Java 中最有名的方法当属 `main()` 方法，这是程序的入口。
+
+简单来说，如果**类**是“图纸”，**对象**是“实物”，那么**方法（Method）就是这个实物“能执行的动作”或“拥有的技能”**。
+
+在“万物皆对象”的思想里，成员变量描述对象**“是什么”**（静态），而方法描述对象**“能干什么”**（动态）。
+
+
+
+#### [02、如何声明方法？](https://javabetter.cn/oo/method.html#_02、如何声明方法)
+
+方法的声明反映了方法的一些信息，比如说可见性、返回类型、方法名和参数。如下图所示。
+
+<img src="assets/javaAssets/7.functionMeaning.png" width="65%">
+
+**访问权限**：它指定了方法的可见性。Java 提供了四种[访问权限修饰符](https://javabetter.cn/oo/access-control.html)：
+
+- public：该方法可以被所有类访问。
+- private：该方法只能在定义它的类中访问。
+- protected：该方法可以被同一个包中的类，或者不同包中的子类访问。
+- default：如果一个方法没有使用任何访问权限修饰符，那么它是 package-private 的，意味着该方法只能被同一个包中的类可见。
+
+
+
+**返回类型**：方法返回的数据类型，可以是基本数据类型、对象和集合，如果不需要返回数据，则使用 void 关键字。
+
+**方法名**：方法名最好反应出方法的功能，比如，我们要创建一个将两个数字相减的方法，那么方法名最好是 subtract。
+
+方法名最好是一个动词，并且以小写字母开头。如果方法名包含两个以上单词，那么第一个单词最好是动词，然后是形容词或者名词，并且要以驼峰式的命名方式命名。比如：
+
+- 一个单词的方法名：`sum()`
+- 多个单词的方法名：`stringComparision()`
+
+一个方法可能与同一个类中的另外一个方法同名，这被称为方法重载。
+
+**参数**：参数被放在一个圆括号内，如果有多个参数，可以使用逗号隔开。参数包含两个部分，参数类型和参数名。如果方法没有参数，圆括号是空的。
+
+**方法签名**：每一个方法都有一个签名，包括方法名和参数,这个是为了方法重载
+
+**方法体**：方法体放在一对花括号内，把一些代码放在一起，用来执行特定的任务。
+
+
+
+#### [03、方法有哪几种？](https://javabetter.cn/oo/method.html#_03、方法有哪几种)
+
+方法可以分为两种，一种叫标准类库方法，一种叫用户自定义方法。
+
+**1）预先定义方法**
+
+Java 提供了大量预先定义好的方法供我们调用，也称为标准类库方法，或者内置方法。比如说 String 类的 `length()`、`equals()`、`compare()` 方法，以及我们在初学 Java 阶段最常用的 `println()` 方法，用来在控制台打印信息。
+
+```java
+public class PredefinedMethodDemo {
+    public static void main(String[] args) {
+        System.out.println("沉默王二，一枚有趣的程序员");
+    }
+}
+```
+
+在上面的代码中，我们使用了两个预先定义的方法，`main()` 方法是程序运行的入口，`println()` 方法是 `PrintStream` 类的一个方法。这些方法已经提前定义好了，所以我们可以直接使用它们。
+
+我们可以通过集成开发工具查看预先定义方法的方法签名，当我们把鼠标停留在 `println()` 方法上面时，就会显示下图中的内容：
+
+<img src="assets/javaAssets/7.printlnExplanation.png" width="70%">
+
+`println()` 方法的访问权限修饰符是 public，返回类型为 void，方法名为 println，参数为 `String x`，以及 Javadoc（方法是干嘛的）。
+
+预先定义方法让编程变得简单了起来，我们只需要在实现某些功能的时候直接调用这些方法即可，不需要重新编写。
+
+Java 的一个非常大的优势，就是，JDK 的设计者（开发者）为我们提供了大量的标准类库方法，这对于初学编程的新手来说极其友好；不仅如此，GitHub/码云上也有大量可以直接拿到生产环境下使用的第三方类库，比如说 hutool 啊、Apache 包啊、一线大厂或者顶级开发大佬贡献的类库，比如说 Druid、Gson 等等。
+
+但如果你想从一个初级开发者（俗称调包侠）晋升为一名优秀的 Java 工程师，那就需要深入研究这些源码，并掌握，最好是能自己写出来这些源码，最起码能自定义一些源码，以便为我们所用。
+
+**[2）用户自定义方法](https://javabetter.cn/oo/method.html#_2-用户自定义方法)**
+
+当预先定义方法无法满足我们的要求时，就需要自定义一些方法，比如说，我们来定义这样一个方法，用来检查数字是偶数还是奇数。
+
+```java
+public static void findEvenOdd(int num) {
+    if (num % 2 == 0) {
+        System.out.println(num + " 是偶数");
+    } else {
+        System.out.println(num + " 是奇数");
+    }
+}
+```
+
+方法名叫做 `findEvenOdd`，访问权限修饰符是 public，并且是静态的（static），返回类型是 void，参数有一个整型（int）的 num。方法体中有一个 if else 语句，如果 num 可以被 2 整除，那么就打印这个数字是偶数，否则就打印这个数字是奇数。
+
+方法被定义好后，如何被调用呢？
+
+```java
+public class EvenOddDemo {
+    public static void main(String[] args) {
+        findEvenOdd(10);
+        findEvenOdd(11);
+    }
+
+    public static void findEvenOdd(int num) {
+        if (num % 2 == 0) {
+            System.out.println(num + " 是偶数");
+        } else {
+            System.out.println(num + " 是奇数");
+        }
+    }
+}
+```
+
+`main()` 方法是程序的入口，并且是静态的，那么就可以直接调用同样是静态方法的 `findEvenOdd()`。
+
+当一个方法被 static 关键字修饰时，它就是一个静态方法。换句话说，静态方法是属于类的，不属于类实例的（不需要通过 new 关键字创建对象来调用，直接通过类名就可以调用）。
+
+<span style="color:red">如果一个方法没有 `static` 修饰，它就属于**实例方法（Instance Method）**。</span>
+
+<span style="color:red">简单来说，**静态方法是“公共技能”，而实例方法是“私人技能”。** 既然是私人技能，你就必须先请出那个“私人”（也就是**实例化对象**），才能调用这个技能,我们接下来就要讲这个</span>
+
+
+
+#### [04、什么是实例方法？](https://javabetter.cn/oo/method.html#_04、什么是实例方法)
+
+没有使用 [static 关键字](https://javabetter.cn/oo/static.html)修饰，但在类中声明的方法被称为实例方法，在调用实例方法之前，必须创建类的对象。
+
+```java
+public class InstanceMethodExample {
+    public static void main(String[] args) {
+        InstanceMethodExample instanceMethodExample = new InstanceMethodExample();
+        System.out.println(instanceMethodExample.add(1, 2));
+    }
+
+    public int add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+`add()` 方法是一个实例方法，需要创建 InstanceMethodExample 对象来访问。
+
+实例方法有两种特殊类型：
+
+- getter 方法
+- setter 方法
+
+getter 方法用来获取私有变量（private 修饰的字段）的值，setter 方法用来设置私有变量的值。
+
+```java
+public class Person {
+    private String name;
+    private int age;
+    private int sex;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    public int getSex() {
+        return sex;
+    }
+
+    public void setSex(int sex) {
+        this.sex = sex;
+    }
+}
+```
+
+getter 方法以 get 开头，setter 方法以 set 开头。
+
+对于getter和setter的命名,虽然编译器不强制，但 **Java 框架（Frameworks）** 强制。
+
+如果你用 Spring、MyBatis 或者 JSON 解析工具（如 Jackson）：
+
+1. **它们会“猜”**：当你告诉工具要读取 `name` 属性时，工具会利用**反射（Reflection）**机制，在你的类里寻找 `getName()` 这个方法。
+2. **找不到就罢工**：如果你为了标新立异写成 `fetchName()`，这些框架就会两手一摊：“对不起，我没找到 `getName`，我认为这个属性不存在。”
+
+**所以，Getter/Setter 更像是一种“协议”, **“行业潜规则”。 就像你和邻居约定好，虽然没有法律规定，但大家都把垃圾放在门口，清洁工才好收走。
+
+
+
+
+
+#### [05、什么是静态方法？](https://javabetter.cn/oo/method.html#_05、什么是静态方法)
+
+相应的，有 [static 关键字](https://javabetter.cn/oo/static.html)修饰的方法就叫做静态方法。
+
+```java
+public class StaticMethodExample {
+    public static void main(String[] args) {
+        System.out.println(add(1,2));
+    }
+
+    public static int add(int a, int b) {
+        return a + b;
+    }
+}
+```
+
+StaticMethodExample 类中，mian 和 add 方法都是静态方法，不同的是，main 方法是程序的入口。当我们调用静态方法的时候，就不需要 new 出来类的对象，就可以直接调用静态方法了，一些工具类的方法都是静态方法，比如说 hutool 工具类库，里面有大量的静态方法可以直接调用。
+
+> Hutool 的目标是使用一个工具方法代替一段复杂代码，从而最大限度的避免“复制粘贴”代码的问题，彻底改变我们写代码的方式。
+
+以计算 MD5 为例：
+
+- 👴【以前】打开搜索引擎 -> 搜“Java MD5 加密” -> 打开某篇博客-> 复制粘贴 -> 改改好用
+- 👦【现在】引入 Hutool -> SecureUtil.md5()
+
+Hutool 的存在就是为了减少代码搜索成本，避免网络上参差不齐的代码出现导致的 bug。
+
+
+
+#### [06、什么是抽象方法？](https://javabetter.cn/oo/method.html#_06、什么是抽象方法)
+
+没有方法体的方法被称为抽象方法，它总是在[抽象类](https://javabetter.cn/oo/abstract.html)中声明。这意味着如果类有抽象方法的话，这个类就必须是抽象的。可以使用 abstract 关键字创建抽象方法和抽象类。
+
+```java
+abstract class AbstractDemo {
+    abstract void display();
+}
+```
+
+当一个类继承了抽象类后，就必须重写抽象方法：
+
+```java
+public class MyAbstractDemo extends AbstractDemo {
+    @Override
+    void display() {
+        System.out.println("重写了抽象方法");
+    }
+
+    public static void main(String[] args) {
+        MyAbstractDemo myAbstractDemo = new MyAbstractDemo();
+        myAbstractDemo.display();
+    }
+}
+```
+
+输出结果如下所示：
+
+```java
+重写了抽象方法
+```
+
+
+
+如果说普通方法是**“现成的工具”**，那么抽象方法就是一个**“必须填写的申请表”**。它在父类里先挖一个坑，并规定好坑的形状（方法名、参数、返回值），然后指着这个坑对子类说：“这个活儿我定好了，但具体怎么干，你来！”
+
+我们可以从以下三个维度来深度解析这个“占位符”：
+
+
+
+**1. 它是一种“强制性的契约”**
+
+抽象方法最霸道的地方在于：**只要一个类继承了包含抽象方法的抽象类，除非它自己也想当“甩手掌柜”（也声明为抽象类），否则它必须实现（Override）这些方法。**
+
+如果不写，编译器就会无情地报错：
+
+> “嘿！你既然继承了我的名号，就得把我留下的那几个‘占位’的方法给填上，不然你别想通过编译！”
+
+
+
+**2. 为什么要搞这种“占位”？（以“闹钟”为例）**
+
+想象你在设计一个“闹钟”系统：
+
+- **父类（抽象类）**：`Alarm`
+- **抽象方法**：`public abstract void ring();`
+
+为什么 `ring()` 要设计成抽象的？
+
+因为“闹钟肯定会响”，这是共性。但**具体的响声**是不确定的：
+
+- **小鸟闹钟**：响声是“叽叽喳喳”。
+- **重金属闹钟**：响声是“咚咚锵锵”。
+- **振动闹钟**：响声是“嗡嗡嗡”。
+
+作为设计师，你在父类里无法写死响声逻辑，所以你留下一个**抽象方法来占位**。你定义了“闹钟必须会响”这个规则，而把“怎么响”的自由留给了具体的闹钟产品。
+
+
+
+**3. 抽象方法的“长相”特征**
+
+由于它只是个占位符，所以它长得很清爽：
+
+1. **有 `abstract` 关键字**：亮明身份。
+2. **没有大括号 `{}`**：因为它没有具体的“活儿”。
+3. **以分号 `;` 结尾**：到此为止，剩下的子类再说。
+
+
+
+```java
+public abstract void run(); // 只有声明，没有实现
+```
+
+------
+
+**4. 抽象方法 vs. 普通方法**
+
+| **维度**       | **普通方法 (Concrete)**    | **抽象方法 (Abstract)**                |
+| -------------- | -------------------------- | -------------------------------------- |
+| **是否有逻辑** | 有 `{...}`，拿来即用       | 无 `{}`，只是个空壳                    |
+| **子类态度**   | 子类可以不理它（直接继承） | **子类必须重写**（除非子类也是抽象类） |
+| **存在的意义** | 提供通用的功能复用         | **定义标准和规范**，强制子类实现       |
+
+**5.它的灵魂伴侣：多态**
+
+“占位”最爽的地方在于：你可以拿着一个父类的引用，去调用那个被占位的方法，而实际执行的是子类的具体逻辑。
+
+```java
+// 我只知道它是个闹钟，我不管它怎么响
+Alarm myAlarm = new BirdAlarm(); 
+myAlarm.ring(); // 虽然在 Alarm 里 ring 是占位的，但这里会准确发出“叽叽喳喳”声
+```
+
+
+
+**总结**
+
+**抽象方法就是父类在“画饼”，而子类负责“烙饼”。** 它保证了整个家族的成员都拥有某些共同的技能，同时也保证了每个成员能根据自己的特色去打磨这些技能。
 
 
 
