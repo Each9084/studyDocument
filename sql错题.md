@@ -921,18 +921,64 @@ HAVING COUNT(*) >= 3;
 
 
 
-```
-SELECT * FROM (
-SELECT user_id,date FROM login 
+<span style = "color:teal">思路:</span>
+
+<span style = "color:teal">①面对这个问题,首先确定是每个日期新用户的留存率,我们首先应该设置一个框架表0,也就是表0是原封不动来自于题目的login表,我们要把它当作最左侧的基准也就是股价表,所以要用DISTINCT date 或者 GROUP BY date确保只有一个,否则后面JOIN 的时候就是几百个重复的date与目标表进行相乘.</span>
+
+
+
+<span style = "color:teal">②紧接着我们要join第二张表:表1,通过表1我们要选择哪些是新用户,这个通过MIN结合GROUP BY user_id就可以办到,然后关键的部分来了:</span><span style = "color:red">我们需要`ON l0.date = l1.base_date`</span>,<span style = "color:teal">很多人可能会疑惑为什么不用`ON l0.user_id = l1.user_id`,这是因为题目要求统计：**“每个日期”新用户的次日留存**, 这意味着，我们的报表每一行都是一个日期。</span>
+
+<span style="color:teal">**- $l0$ 是“排队窗口”**：它提供了 10-12、10-13、10-14 这样一个个整齐的窗口。</span>
+
+<span style="color:teal">**- $l1$ 是“刚出生的婴儿”**：它记录了每个用户以及他们出生的日期（`base_date`）。</span>
+
+<span style="color:teal">当写下 `ON l0.date = l1.base_date` 时，你实际上是在对数据库下令：</span>
+
+> **“请把所有在 10-12 出生的新用户，统统领到 10-12 这个窗口前集合。”**
+
+>  **为什么要“挂在日期上”而不是“挂在人身上”？**
+>
+> 因为我们要算的分母是**“那一天新增加的总人数”**。
+>
+> - 如果我们不按日期连接，我们就不知道这些新用户该归属于哪一天。
+> - 通过 `ON l0.date = l1.base_date`，我们强行让 $l1$（新用户表）里的 `user_id` 找到了它的**归属日期**。
+>
+> **想象一下这个过程：**
+>
+> - $l0$ 报出一个日期：**“2020-10-12”**。
+> - $l1$ 响应：**“我有 3 个人的 `base_date` 是 10-12，分别是用户 1、2、3。”**
+> - **结果**：在临时表里，10-12 这一行就扩展成了 3 行，每行对应一个用户。
+>
+> 
+>
+> | **l0.date (窗口)** | **l1.user_id (领到窗口的人)** | **l1.base_date (证明其出生日的凭证)** |
+> | ------------------ | ----------------------------- | ------------------------------------- |
+> | **10-12**          | 1                             | 10-12                                 |
+> | **10-12**          | 2                             | 10-12                                 |
+> | **10-12**          | 3                             | 10-12                                 |
+> | **10-13**          | **NULL**                      | **NULL**                              |
+
+
+
+<span style="color:teal">③ 也就是最简单的一步,找到同一个user_id下两张表,表2是表1(第一天)第二天的情况,说明这个人留存了</span>
+
+
+```sql
+SELECT l0.date,IFNULL(ROUND(COUNT(DISTINCT l2.user_id) * 1.0/ COUNT(DISTINCT l1.user_id),3),0)
+FROM
+(
+SELECT DISTINCT date FROM login 
 ) AS l0
 LEFT JOIN (
 SELECT user_id,
-MIN(date) AS base_date
-FROM login
-GROUP BY user_id
+		MIN(date) AS base_date
+		FROM login 
+		GROUP BY user_id
 ) AS l1
+ON l0.date = l1.base_date
 LEFT JOIN login l2 
-ON l1.user_id = l2.user_id AND l2.date = DATE_ADD(l1.date,INTERVAL 1 DAY)
-
+ON l1.user_id = l2.user_id AND l2.date = DATE_ADD(l1.base_date,INTERVAL 1 DAY)
+GROUP BY date;
 ```
 

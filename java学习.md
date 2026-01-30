@@ -5621,6 +5621,640 @@ A2:“初始化字段只是构造方法的一种工作，它还可以做更多�
 
 
 
+
+
+### Java访问权限修饰符
+
+
+
+| **修饰符**         | **本类** | **同一个包** | **子类** | **任何地方** | **形象比喻**                               |
+| ------------------ | -------- | ------------ | -------- | ------------ | ------------------------------------------ |
+| **private**        | ✅        | ❌            | ❌        | ❌            | **个人日记**：只有自己能看                 |
+| **default** (不写) | ✅        | ✅            | ❌        | ❌            | **家庭秘密**：只限同一个包（家人）         |
+| **protected**      | ✅        | ✅            | ✅        | ❌            | **家族遗产**：家人和外地的后代（子类）可用 |
+| **public**         | ✅        | ✅            | ✅        | ✅            | **公共广告**：谁都能看，谁都能用           |
+
+
+
+
+
+我们先来讨论一下为什么需要访问权限控制。其实之前我们在讲[类和对象](https://javabetter.cn/oo/object-class.html)的时候有提到，今天我们来详细地聊一聊
+
+考虑两个场景：
+
+场景 1：工程师 A 编写了一个类 ClassA，但是工程师 A 并不希望 ClassA 被其他类都访问到，该如何处理呢？
+
+场景 2：工程师 A 编写了一个类 ClassA，其中有两个方法 fun1、fun2，工程师只想让 fun1 对外可见，也就是说，如果别的工程师来调用 ClassA，只可以调用方法 fun1，该怎么处理呢？
+
+
+
+此时，访问权限控制便可以起到作用了。
+
+在 Java 中，提供了四种访问权限控制：
+
+- 默认访问权限（包访问权限）
+- public
+- private
+- protected
+
+类只可以用默认访问权限和 public 修饰。比如说：
+
+```java
+public class Wanger{}
+```
+
+或者
+
+```java
+class Wanger{}
+```
+
+但变量和方法则都可以修饰。
+
+#### 1. 修饰类
+
+- 默认访问权限（包访问权限）：用来修饰类的话，表示该类只对同一个包中的其他类可见。
+- public：用来修饰类的话，表示该类对其他所有的类都可见。
+
+例 1：
+
+Main.java:
+
+```java
+package JavaBase.oopExample.PermissionModifiers;
+
+public class Main {
+	public static void main(String\[\] args) {
+
+		People people = new People("Tom");
+		System.out.println(people.getName());
+	}
+
+}
+```
+
+People.java
+
+```java
+package JavaBase.oopExample.PermissionModifiers;
+
+class People {//默认访问权限（包访问权限）
+
+	private String name = null;
+
+	public People(String name) {
+		this.name = name;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+}
+```
+
+从代码可以看出，修饰 People 类采用的是默认访问权限，而由于 People 类和 Main 类在同一个包中，因此 People 类对于 Main 类是可见的。
+
+例子 2：
+
+People.java
+
+```java
+package JavaBase.oopExample.nativeExample;
+
+class People {//默认访问权限（包访问权限）
+
+	private String name = null;
+
+	public People(String name) {
+		this.name = name;
+	}
+
+	public String getName() {
+		return name;
+	}
+
+	public void setName(String name) {
+		this.name = name;
+	}
+}
+```
+
+此时 People 类和 Main 类不在同一个包中，会发生什么情况呢？
+
+下面是 Main 类中的提示的错误：
+
+![7.permissionModifier](assets/javaAssets/7.permissionModifier.png)
+
+提示 Peolple 类在 Main 类中不可见。从这里就可以看出，如果用默认访问权限去修饰一个类，该类只对同一个包中的其他类可见，对于不同包中的类是不可见的。
+
+正如上图的快速修正提示所示，将 People 类的默认访问权限更改为 public 的话，People 类对于 Main 类便可见了。
+
+
+
+#### 2. 修饰方法和变量
+
+- 默认访问权限（包访问权限）：如果一个类的方法或变量被包访问权限修饰，也就意味着只能在同一个包中的其他类中显示地调用该类的方法或者变量，在不同包中的类中不能显式地调用该类的方法或变量。
+- private：如果一个类的方法或者变量被 private 修饰，那么这个类的方法或者变量只能在该类本身中被访问，在类外以及其他类中都不能显式的进行访问。
+- protected：如果一个类的方法或者变量被 protected 修饰，对于同一个包的类，这个类的方法或变量是可以被访问的。对于不同包的类，只有继承于该类的类才可以访问到该类的方法或者变量。
+- public：被 public 修饰的方法或者变量，在任何地方都是可见的。
+
+
+
+例 3：
+
+Main.java 没有变化
+
+People.java
+
+```java
+package JavaBase.oopExample.PermissionModifiers;
+
+public class People {
+
+	private String name = null;
+
+	public People(String name) {
+		this.name = name;
+	}
+
+	String getName() {    //默认访问权限（包访问权限）
+		return name;
+	}
+
+	void setName(String name) {   //默认访问权限（包访问权限）
+		this.name = name;
+	}
+}
+```
+
+此时在 Main 类是可以显示调用方法 getName 和 setName 的。
+
+
+
+但是如果 People 类和 Main 类不在同一个包中：
+
+```java
+package com.tobebetterjavaer.test2;    //与Main类处于不同包中
+
+public class People {
+
+	private String name = null;
+
+	public People(String name) {
+		this.name = name;
+	}
+
+	String getName() {    //默认访问权限（包访问权限）
+		return name;
+	}
+
+	void setName(String name) {   //默认访问权限（包访问权限）
+		this.name = name;
+	}
+}
+```
+
+此时在 Main 类中会提示错误：
+
+![7.permissionModifier2](assets/javaAssets/7.permissionModifier2.png)
+
+由此可以看出，如果用默认访问权限来修饰类的方法或者变量，则只能在同一个包的其他类中进行访问。
+
+例 4:
+
+People.java
+
+```java
+package JavaBase.oopExample.PermissionModifiers;
+
+public class People {
+    private String name = null;
+
+    public People(String name) {
+        this.name = name;
+    }
+
+    protected String getName() {
+        return name;
+    }
+
+
+    protected  void setName(String name) {
+        this.name = name;
+    }
+
+}
+```
+
+此时是可以在 Main 中显示调用方法 getName 和 setName 的。
+
+如果 People 类和 Main 类处于不同包中：
+
+![7.permissionModifier3](assets/javaAssets/7.permissionModifier3.png)
+
+如果在 com.cxh.test1 中定一个类 Man 继承 People，则可以在类 Man 中显示调用方法 getName 和 setName：
+
+```java
+package JavaBase.oopExample.PermissionModifiers;
+
+import JavaBase.oopExample.nativeExample.People;
+
+public class MAN extends People {
+    public MAN(String name) {
+        super(name);
+    }
+
+    public String toString(){
+        return getName();
+    }
+
+}
+```
+
+
+
+> 解析一下上面的MAN,更多详情会在继承章节提及
+>
+>  **问题 1：`super(name)` 是干什么的？为什么强制生成？**
+>
+> 要理解这个，你得记住 Java 继承里的一个核心逻辑：**“先有老子，才有儿子”。**
+>
+> 
+>
+>  1. 为什么必须调 `super`？
+>
+> 当你执行 `new MAN("wang")` 时，系统不仅要造一个 `MAN` 对象，还要初始化它继承自 `People` 的那部分属性。
+>
+> - 在你的 `People` 类中，你定义了一个有参构造函数：`public People(String name)`。
+> - 这意味着：**任何一个 `People`（或其子类）在出生时，都必须提供一个 `name`。**
+> - 因为 `MAN` 继承了 `People`，所以 `MAN` 出生时，必须负责把这个 `name` 传给父类的构造函数，帮父类完成初始化。
+>
+> 
+>
+>  2. 为什么是“强制”的？
+>
+> - **规则**：子类的构造函数第一行，**必须**调用父类的构造函数。
+> - 如果你没写 `super(...)`，Java 编译器会尝试自动帮你加一行 `super();`（调用父类无参构造）。
+> - **冲突点**：但你的 `People` 类里**没有无参构造函数**（因为你手动写了一个有参的，默认的被收回了）。
+> - **结果**：编译器发现自己没法自动帮你完成初始化，于是它就会报错，强迫你手动写出 `super(name)`，明确告诉它怎么初始化父类。
+>
+> 
+>
+>  **问题 2：`getName()` 哪里来的？为什么能直接 `return` 方法？**
+>
+>  1. 这个方法是从哪来的？
+>
+> 这就是**继承（Inheritance）**的魔力。
+>
+> - 虽然你在 `MAN` 这个类里没有写 `getName()` 方法，但因为你写了 `extends People`。
+> - **只要父类中被 `public` 或 `protected` 修饰的东西，子类都会全盘接收。**
+> - 在你之前的代码里，`People` 的 `getName()` 是 `public` 的，所以 `MAN` 自动“学会”了这个技能。
+>
+>  2. 为什么可以直接 `return getName();`？
+>
+> 这里有一个语法上的误解，我们拆开来看：
+>
+> - `return getName();` 并不是“返回一个方法”，而是**“执行这个方法，并返回它的执行结果”**。
+> - 过程如下：
+>   1. 调用 `getName()`。
+>   2. `getName()` 跑去父类那里拿到了 `name` 字符串（比如 "wang"）。
+>   3. `toString()` 方法接收到这个字符串，然后再把它 `return` 出去。
+> - 因为 `getName()` 的返回值类型是 `String`，而 `toString()` 要求返回的也是 `String`，所以类型完全匹配，合法！
+
+
+
+#### 3.总结
+
+补充一些关于 Java 包和类文件的知识：
+
+1）Java 中的包主要是为了防止类文件命名冲突以及方便进行代码组织和管理；
+
+2）对于一个 Java 源代码文件，如果存在 public 类的话，只能有一个 public 类，且此时源代码文件的名称必须和 public 类的名称完全相同。
+
+另外，如果还存在其他类，这些类在包外是不可见的。如果源代码文件没有 public 类，则源代码文件的名称可以随意命名。
+
+
+
+很简单，换句话说，**不想让别人看的就 private，想让人看的就 public，想同一个班级/部门看的就默认，想让下一级看的就 protected**
+
+
+
+### Java代码初始化块
+
+这一章是我们了解实例初始化和静态初始化的过程,代码初始化块用于初始化一些[成员变量](https://javabetter.cn/oo/var.html),对象在创建的时候会执行代码初始化块，又称实例初始化块，主要和静态初始化块做区分。
+
+可以直接通过‘=’操作符对成员变量进行初始化，但通过代码初始化块可以做更多的事情，比如说打印出成员变量初始化后的值。
+
+来看下面的代码，我们可以直接通过 `=` 操作符对成员变量进行初始化。
+
+```java
+class Bike{  
+    int speed=100;  
+}
+```
+
+那为什么还需要代码初始化块呢?你可能有这样的疑问
+
+我们可以通过代码初始化块执行一个更复杂的操作，比如为集合填充值。来看下面这段代码。
+
+```java
+public class Bike {
+    List<String> list;
+
+    {
+        list = new ArrayList<>();
+        list.add("沉默王二");
+        list.add("沉默王三");
+    }
+
+    public static void main(String[] args) {
+        System.out.println(new Bike().list);
+    }
+}
+```
+
+如果只使用‘=’操作符的话，是没办法完成集合初始化的，对吧？‘=’ 后面只能 new 出集合，却没办法填充值，代码初始化就可以完成这项工作。
+
+“[构造方法](https://javabetter.cn/oo/construct.html)执行得早还是代码初始化块啊，哥？”三妹这个问题问的还是挺有水平的。
+
+“不要着急，三妹，先来看下面这个例子。”
+
+```sql
+public class Car {
+    Car() {
+        System.out.println("构造方法");
+    }
+
+    {
+        System.out.println("代码初始化块");
+    }
+
+    public static void main(String[] args) {
+        new Car();
+    }
+}
+```
+
+我们来看一下程序的输出结果就一下子明白了。
+
+```
+代码初始化块
+构造方法
+```
+
+从输出结果看上去，仿佛代码初始化块执行得更早，对吧？
+
+<span style="color:red">事实上是这样子吗？</span>
+
+对象在初始化的时候会先调用构造方法，这是毫无疑问的，只不过，构造方法在执行的时候会把代码初始化块放在构造方法中其他代码之前，所以，先看到了"代码初始化块"，后看到了"构造方法".
+
+<img src="assets/javaAssets/7.initCodeBloack.png" width="40%">
+
+
+
+编译器把代码初始化块放到了构造方法中
+
+
+
+对于代码初始化来说，它有三个规则:
+
+- 类实例化的时候执行代码初始化块；
+- 实际上，代码初始化块是放在构造方法中执行的，只不过比较靠前；
+- 代码初始化块里的执行顺序是从前到后的。
+
+这些规则不用死记硬背，大致了解一下就行了。我们继续来看下面这段代码:
+
+```java
+class A {
+    A () {
+        System.out.println("父类构造方法");
+    }
+}
+public class B extends A{
+    B() {
+        System.out.println("子类构造方法");
+    }
+
+    {
+        System.out.println("代码初始化块");
+    }
+
+    public static void main(String[] args) {
+        new B();
+    }
+}
+```
+
+来看一下输出结果
+
+```
+父类构造方法
+代码初始化块
+子类构造方法
+```
+
+在默认情况下，子类的构造方法在执行的时候会主动去调用父类的构造方法。也就是说，其实是构造方法先执行的，再执行的代码初始化块。
+
+这个例子再次印证了之前的第二条规则：代码初始化块是放在构造方法中执行的，只不过比较靠前
+
+除了这种实例化代码初始化块，还有静态初始化，不过我们会放到 [static 关键字](https://javabetter.cn/oo/static.html)中去讲，这里先大致了解一下。
+
+下面是一个 Java 示例代码，演示实例初始化块和静态初始化块的用法：
+
+```java
+public class Example {
+    // 静态变量
+    public static int staticVar = 1;
+    // 实例变量
+    public int instanceVar = 2;
+
+    // 静态初始化块
+    static {
+        System.out.println("执行静态初始化块");
+        staticVar = 3;
+    }
+
+    // 实例初始化块
+    {
+        System.out.println("执行实例初始化块");
+        instanceVar = 4;
+    }
+
+    // 构造方法
+    public Example() {
+        System.out.println("执行构造方法");
+    }
+
+    public static void main(String[] args) {
+        System.out.println("执行main方法");
+
+        Example e1 = new Example();
+        Example e2 = new Example();
+
+        System.out.println("e1的静态变量：" + e1.staticVar);
+        System.out.println("e1的实例变量：" + e1.instanceVar);
+        System.out.println("e2的静态变量：" + e2.staticVar);
+        System.out.println("e2的实例变量：" + e2.instanceVar);
+    }
+}
+```
+
+在这个示例代码中，有一个静态变量 staticVar 和一个实例变量 instanceVar，以及一个静态初始化块和一个实例初始化块。在静态初始化块中，我们打印了一条消息并修改了静态变量的值；在实例初始化块中，我们也打印了一条消息并修改了实例变量的值。
+
+来看一下执行结果：
+
+```
+执行静态初始化块
+执行main方法
+执行实例初始化块
+执行构造方法
+执行实例初始化块
+执行构造方法
+e1的静态变量：3
+e1的实例变量：4
+e2的静态变量：3
+e2的实例变量：4
+```
+
+从输出结果可以看出，静态初始化块在类加载时执行，只会执行一次，并且优先于实例初始化块和构造方法的执行；实例初始化块在每次创建对象时执行，在构造方法之前执行。
+
+
+
+
+
+我们可以把这个过程想象成**一场舞台剧的开演**：
+
+------
+
+**1. 程序的“开场逻辑”：执行顺序**
+
+当你运行这段代码时，输出结果的顺序绝对不是随机的。它遵循一套严格的“排队规则”：
+
+1. **静态先行（舞台搭建）**：在 `main` 方法执行前，JVM 先加载类，执行静态变量赋值和**静态初始化块**。这辈子只执行**一次**。
+2. **`main` 出场（主角登场）**：静态准备好了，舞台交给 `main`。
+3. **实例跟随（演员化妆）**：每次 `new` 对象时，先执行实例变量赋值和**实例初始化块**，最后才是**构造方法**。
+
+**具体的输出顺序预测：**
+
+> 1. 执行静态初始化块
+> 2. 执行main方法
+> 3. 执行实例初始化块（e1 开始造了）
+> 4. 执行构造方法
+> 5. 执行实例初始化块（e2 开始造了）
+> 6. 执行构造方法
+
+------
+
+**2. 深度剖析：四个关键组件**
+
+**① 静态初始化块 (`static { ... }`)**
+
+- **它是干嘛的**：给全类共享的资源“开机”。比如加载数据库驱动、读取全局配置文件。
+- **特点**：**众生平等，仅此一次**。不管你 `new` 多少个对象，它都不会再跑了。
+
+**② 实例初始化块 (`{ ... }`)**
+
+- **它是干嘛的**：给每个对象做“通用预处理”。
+- **它和构造函数的关系**：它其实是构造函数的“前置补丁”。编译器在编译时，会把这个块里的代码偷偷塞到**每一个**构造函数的最前面。
+- **为什么用它**：如果你有 5 个重载构造函数，且它们都有一段重复的初始化逻辑，写在实例块里就不用写 5 遍了。
+
+**③ 静态变量 vs 实例变量（内存真相）**
+
+在你的代码最后打印输出时，你会发现一个有趣的现象：
+
+- **`staticVar`**：`e1` 改了它，`e2` 看到的也是改后的值。因为它住在“方法区”，全类共用一个。
+- **`instanceVar`**：`e1` 和 `e2` 各有一个 `4`。它们互不干涉，住在“堆内存”里不同的房间。
+
+------
+
+**3. 一个容易忽略的细节：变量赋值的“暗箱操作”**
+
+在 Java 里，变量的初始化其实分两步：
+
+1. **显式赋值**：你写的 `int staticVar = 1;`。
+2. **块赋值**：你在 `static { ... }` 里写的 `staticVar = 3;`。
+
+**谁赢了？** 后执行的赢。 由于代码是从上往下扫描的，所以 `staticVar` 先变成 `1`，紧接着被静态块改成了 `3`。最终 `e1` 拿到的就是 `3`。
+
+------
+
+**4. 总结：Java 初始化的“四字经”**
+
+> **静态优先**：类加载时先搞定 static。 **父类优先**：如果有继承，先搞定老子的再搞定儿子的。 **块在先**：实例块永远在构造函数之前执行。 **最后构造**：构造函数是对象诞生的最后一道工序。
+
+
+
+**实例初始化块在实际中的例子:**
+
+实际场景：数据库连接池的默认配置
+
+在大型系统中，初始化一个数据库连接对象非常复杂。你可能需要初始化一些底层的监控埋点、计数器。
+
+```java
+public class MyDatabaseConnection {
+    private long connectionId;
+    private MetricsCollector metrics;
+
+    {
+        // 每一个连接创建时，都必须向监控系统注册自己
+        this.connectionId = System.nanoTime();
+        this.metrics = new MetricsCollector();
+        this.metrics.reportStatus("CREATED");
+    }
+    
+    // 下面无论有多少个不同参数的构造函数（连接不同数据库、不同超时时间）
+    // 都会自动完成上面的注册逻辑
+}
+```
+
+
+
+
+
+### Java抽象类
+
+#### 01、定义抽象类
+
+定义抽象类的时候需要用到关键字 `abstract`，放在 `class` 关键字前，就像下面这样。
+
+```
+abstract class AbstractPlayer {
+}
+```
+
+关于抽象类的命名，《[阿里的 Java 开发手册](https://javabetter.cn/pdf/ali-java-shouce.html)》上有强调，“抽象类命名要使用 Abstract 或 Base 开头”，这条规约还是值得遵守的，真正做到名如其意。
+
+
+
+#### 02、抽象类的特征
+
+抽象类是不能实例化的，尝试通过 `new` 关键字实例化的话，编译器会报错，提示“类是抽象的，不能实例化”。
+
+![8.abstractCharacter](assets/javaAssets/8.abstractCharacter.png)
+
+虽然抽象类不能实例化，但可以有子类。子类通过 `extends` 关键字来继承抽象类。就像下面这样。
+
+```java
+public class BasketballPlayer extends AbstractPlayer {
+}
+```
+
+如果一个类定义了一个或多个抽象方法，那么这个类必须是抽象类。
+
+当我们尝试在一个普通类中定义抽象方法的时候，编译器会有两处错误提示。第一处在类级别上，提示“这个类必须通过 `abstract` 关键字定义”，见下图。
+
+![8.abstract-02](assets/javaAssets/8.abstract-02.png)
+
+第二处在尝试定义 abstract 的方法上，提示“抽象方法所在的类不是抽象的”，见下图。
+
+
+
+
+
 # 其他
 
 ### `Class`(大写C)和`class`(小写c)的区别
