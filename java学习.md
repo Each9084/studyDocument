@@ -6228,7 +6228,7 @@ abstract class AbstractPlayer {
 
 关于抽象类的命名，《[阿里的 Java 开发手册](https://javabetter.cn/pdf/ali-java-shouce.html)》上有强调，“抽象类命名要使用 Abstract 或 Base 开头”，这条规约还是值得遵守的，真正做到名如其意。
 
-
+<span style="color:red">另外 在 Java 的接口（interface）中，如果你定义了一个方法，既没有加 `static`，也没有加 `default`，而且**没有大括号 `{}`**，那么它会被**隐式地（implicitly）**认定为 `public abstract`。</span>
 
 #### 02、抽象类的特征
 
@@ -6251,7 +6251,1180 @@ public class BasketballPlayer extends AbstractPlayer {
 
 第二处在尝试定义 abstract 的方法上，提示“抽象方法所在的类不是抽象的”，见下图。
 
+![8.abstract-03](assets/javaAssets/8.abstract-03.png)
 
+
+
+抽象类中既可以定义抽象方法，也可以定义普通方法，就像下面这样：
+
+```java
+public abstract class AbstractPlayer {
+    abstract void play();
+    
+    public void sleep() {
+        System.out.println("运动员也要休息而不是挑战极限");
+    }
+}
+```
+
+抽象类派生的子类必须实现父类中定义的抽象方法。比如说，抽象类 AbstractPlayer 中定义了 `play()` 方法，子类 BasketballPlayer 中就必须实现。
+
+```java
+public class BasketballPlayer extends AbstractPlayer {
+    @Override
+    void play() {
+        System.out.println("我是张伯伦，篮球场上得过 100 分");
+    }
+}
+```
+
+如果没有实现的话，编译器会提示“子类必须实现抽象方法”，见下图:
+
+![8.abstract-04](assets/javaAssets/8.abstract-04.png)
+
+#### 03、抽象类的应用场景
+
+“二哥，抽象方法我明白了，那什么时候使用抽象方法呢？能给我讲讲它的应用场景吗？”三妹及时的插话道。
+
+“这问题问的恰到好处呀！”我扶了扶眼镜继续说。
+
+**[01）第一种场景**
+
+当我们希望一些通用的功能被多个子类复用的时候，就可以使用抽象类。比如说，AbstractPlayer 抽象类中有一个普通的方法 `sleep()`，表明所有运动员都需要休息，那么这个方法就可以被子类复用。
+
+```java
+abstract class AbstractPlayer {
+    public void sleep() {
+        System.out.println("运动员也要休息而不是挑战极限");
+    }
+}
+```
+
+子类 BasketballPlayer 继承了 AbstractPlayer 类：
+
+```java
+class BasketballPlayer extends AbstractPlayer {
+}
+```
+
+也就拥有了 `sleep()` 方法。BasketballPlayer 的对象可以直接调用父类的 `sleep()` 方法：
+
+```java
+BasketballPlayer basketballPlayer = new BasketballPlayer();
+basketballPlayer.sleep();
+```
+
+子类 FootballPlayer 继承了 AbstractPlayer 类：
+
+```java
+class FootballPlayer extends AbstractPlayer {
+}
+```
+
+也拥有了 `sleep()` 方法，FootballPlayer 的对象也可以直接调用父类的 `sleep()` 方法：
+
+```java
+FootballPlayer footballPlayer = new FootballPlayer();
+footballPlayer.sleep();
+```
+
+这样是不是就实现了代码的复用呢？
+
+
+
+**02）第二种场景**
+
+当我们需要在抽象类中定义好 API，然后在子类中扩展实现的时候就可以使用抽象类。比如说，AbstractPlayer 抽象类中定义了一个抽象方法 `play()`，表明所有运动员都可以从事某项运动，但需要对应子类去扩展实现，表明篮球运动员打篮球，足球运动员踢足球。
+
+```java
+abstract class AbstractPlayer {
+    abstract void play();
+}
+```
+
+BasketballPlayer 继承了 AbstractPlayer 类，扩展实现了自己的 `play()` 方法。
+
+```java
+public class BasketballPlayer extends AbstractPlayer {
+    @Override
+    void play() {
+        System.out.println("我是张伯伦，我篮球场上得过 100 分，");
+    }
+}
+```
+
+FootballPlayer 继承了 AbstractPlayer 类，扩展实现了自己的 `play()` 方法。
+
+```java
+public class FootballPlayer extends AbstractPlayer {
+    @Override
+    void play() {
+        System.out.println("我是C罗，我能接住任意高度的头球");
+    }
+}
+```
+
+为了进一步展示抽象类的特性，我们再来看一个具体的示例。
+
+> PS：[网站](https://javabetter.cn/oo/abstract.html)评论区说涉及到了文件的读写以及 Java 8 的新特性，不适合新人，如果觉得自己实在是看不懂，跳过，等学了 IO 流再来看也行。如果说是为了复习 Java 基础知识，就不存在这个问题了。
+
+假设现在有一个文件，里面的内容非常简单，只有一个“Hello World”，现在需要有一个读取器将内容从文件中读取出来，最好能按照大写的方式，或者小写的方式来读。
+
+这时候，最好定义一个抽象类 BaseFileReader：
+
+```java
+/**
+ * 抽象类，定义了一个读取文件的基础框架，其中 mapFileLine 是一个抽象方法，具体实现需要由子类来完成
+ */
+abstract class BaseFileReader {
+    protected Path filePath; // 定义一个 protected 的 Path 对象，表示读取的文件路径
+
+    /**
+     * 构造方法，传入读取的文件路径
+     * @param filePath 读取的文件路径
+     */
+    protected BaseFileReader(Path filePath) {
+        this.filePath = filePath;
+    }
+
+    /**
+     * 读取文件的方法，返回一个字符串列表
+     * @return 字符串列表，表示文件的内容
+     * @throws IOException 如果文件读取出错，抛出该异常
+     */
+    public List<String> readFile() throws IOException {
+        return Files.lines(filePath) // 使用 Files 类的 lines 方法，读取文件的每一行
+                .map(this::mapFileLine) // 对每一行应用 mapFileLine 方法，将其转化为指定的格式
+                .collect(Collectors.toList()); // 将处理后的每一行收集到一个字符串列表中，返回
+    }
+
+    /**
+     * 抽象方法，子类需要实现该方法，将文件中的每一行转化为指定的格式
+     * @param line 文件中的每一行
+     * @return 转化后的字符串
+     */
+    protected abstract String mapFileLine(String line);
+}
+```
+
+- filePath 为文件路径，使用 protected 修饰，表明该成员变量可以在需要时被子类访问到。
+- `readFile()` 方法用来读取文件，方法体里面调用了抽象方法 `mapFileLine()`——需要子类来扩展实现大小写的不同读取方式。
+
+在我看来，BaseFileReader 类设计的就非常合理，并且易于扩展，子类只需要专注于具体的大小写实现方式就可以了。
+
+小写的方式：
+
+```java
+class LowercaseFileReader extends BaseFileReader {
+    protected LowercaseFileReader(Path filePath) {
+        super(filePath);
+    }
+
+    @Override
+    protected String mapFileLine(String line) {
+        return line.toLowerCase();
+    }
+}
+```
+
+大写的方式：
+
+```java
+class UppercaseFileReader extends BaseFileReader {
+    protected UppercaseFileReader(Path filePath) {
+        super(filePath);
+    }
+
+    @Override
+    protected String mapFileLine(String line) {
+        return line.toUpperCase();
+    }
+}
+```
+
+从文件里面一行一行读取内容的代码被子类复用了。与此同时，子类只需要专注于自己该做的工作，LowercaseFileReader 以小写的方式读取文件内容，UppercaseFileReader 以大写的方式读取文件内容。
+
+来看一下测试类 FileReaderTest：
+
+```java
+public class FileReaderTest {
+    public static void main(String[] args) throws URISyntaxException, IOException {
+        URL location = FileReaderTest.class.getClassLoader().getResource("helloworld.txt");
+        Path path = Paths.get(location.toURI());
+        BaseFileReader lowercaseFileReader = new LowercaseFileReader(path);
+        BaseFileReader uppercaseFileReader = new UppercaseFileReader(path);
+        System.out.println(lowercaseFileReader.readFile());
+        System.out.println(uppercaseFileReader.readFile());
+    }
+}
+```
+
+在项目的 resource 目录下建一个文本文件，名字叫 helloworld.txt，里面的内容就是“Hello World”。文件的具体位置如下图所示，我用的集成开发环境是 Intellij IDEA。
+
+![8.abstract-05](assets/javaAssets/8.abstract-05.png)
+
+在 resource 目录下的文件可以通过 `ClassLoader.getResource()` 的方式获取到 URI 路径，然后就可以取到文本内容了。
+
+输出结果如下所示：
+
+```
+[hello world]
+[HELLO WORLD]
+```
+
+
+
+#### 04、抽象类总结
+
+好了，对于抽象类我们简单总结一下：
+
+- 1、抽象类不能被实例化。
+- 2、抽象类应该至少有一个抽象方法，否则它没有任何意义。
+- 3、抽象类中的抽象方法没有方法体。
+- 4、抽象类的子类必须给出父类中的抽象方法的具体实现，除非该子类也是抽象类。
+
+
+
+### Java接口
+
+
+
+1.解决“多重继承”的灾难（单继承限制）接口让不相关的类拥有了共同的行为特征，而不需要它们在血缘(继承)上有任何关系。
+
+2.它是“契约”，实现真正的解耦,在生产开发中，接口最重要的意义在于：**制定标准，不问实现。**
+
+
+
+| **维度**     | **继承 (extends)**               | **接口 (implements)**                 |
+| ------------ | -------------------------------- | ------------------------------------- |
+| **关键词**   | **is - a** (是一个)              | **has - a / can - do** (具备某种能力) |
+| **关系强度** | 极强（亲爹），改了父类，子类全变 | 弱（契约），只管方法签名的统一        |
+| **数量限制** | 只能有一个                       | 可以有无数个（斜杠青年）              |
+| **核心目的** | **代码复用**（继承遗产）         | **行为规范**（统一标准）              |
+
+
+
+<span style="color:red">在“传统”的 Java 认知里，接口确实是一份**“霸王条款”**：如果你引用（实现）了一个普通的接口，你**必须**实现它定义的**所有**抽象方法，一个都不能少,但是还有几种方法可以规避,以自由自在的引用</span>
+
+<span style="color:red">①default 可以不强制</span>
+
+<span style="color:red">②通过Adapter设计方式可以规避(详见 03 接口的三种模式,内部其实是通过抽象类重新定义了空方法体来规避)</span>
+
+#### 01、定义接口
+
+接口通过 interface 关键字来定义，它可以包含一些常量和方法，来看下面这个示例。
+
+```java
+public interface Electronic {
+    // 常量
+    String LED = "LED";
+
+    // 抽象方法
+    int getElectricityUse();
+
+    // 静态方法
+    static boolean isEnergyEfficient(String electtronicType) {
+        return electtronicType.equals(LED);
+    }
+
+    // 默认方法
+    default void printDescription() {
+        System.out.println("电子");
+    }
+}
+```
+
+<span style="color:red">在 Java 的接口（interface）中，如果你定义了一个方法，既没有加 `static`，也没有加 `default`，而且**没有大括号 `{}`**，那么它会被**隐式地（implicitly）**认定为 `public abstract`。</span>
+
+
+
+来看一下这段代码反编译后的字节码。
+
+```java
+public interface Electronic
+{
+
+    public abstract int getElectricityUse();
+
+    public static boolean isEnergyEfficient(String electtronicType)
+    {
+        return electtronicType.equals("LED");
+    }
+
+    public void printDescription()
+    {
+        System.out.println("\u7535\u5B50");
+    }
+
+    public static final String LED = "LED";
+}
+```
+
+发现没？接口中定义的所有变量或者方法，都会自动添加上 `public` 关键字。
+
+接下来，我来一一解释下 Electronic 接口中的核心知识点。
+
+
+
+**1）接口中定义的变量会在编译的时候自动加上 `public static final` 修饰符**（注意看一下反编译后的字节码），也就是说上例中的 LED 变量其实就是一个常量。
+
+Java 官方文档上有这样的声明：
+
+> Every field declaration in the body of an interface is implicitly public, static, and final.
+
+换句话说，接口可以用来作为常量类使用，还能省略掉 `public static final`，看似不错的一种选择，对吧？
+
+不过，这种选择并不可取。因为接口的本意是对方法进行抽象，而常量接口会对子类中的变量造成命名空间上的“污染
+
+
+
+**2）没有使用 `private`、`default` 或者 `static` 关键字修饰的方法是隐式抽象的**，在编译的时候会自动加上 `public abstract` 修饰符。也就是说上例中的 `getElectricityUse()` 其实是一个抽象方法，没有方法体——这是定义接口的本意。
+
+
+
+**3）从 Java 8 开始，接口中允许有静态方法**，比如说上例中的 `isEnergyEfficient()` 方法。
+
+静态方法无法由（实现了该接口的）类的对象调用，它只能通过接口名来调用，比如说 `Electronic.isEnergyEfficient("LED")`。
+
+接口中定义静态方法的目的是为了提供一种简单的机制，使我们不必创建对象就能调用方法，从而提高接口的竞争力。
+
+
+
+**4）接口中允许定义 `default` 方法**也是从 Java 8 开始的，比如说上例中的 `printDescription()` 方法，它始终由一个代码块组成，为实现该接口而不覆盖该方法的类提供默认实现。既然要提供默认实现，就要有方法体，换句话说，默认方法后面不能直接使用“;”号来结束——编译器会报错。
+
+![8.interface-03](assets/javaAssets/8.interface-03.png)
+
+
+
+
+
+**那么什么是 `default` 方法？**
+
+简单来说，`default` 方法就是**“带代码正文的接口方法”**。它允许你在接口里写出具体的逻辑，而不需要强迫子类去重写它。
+
+**为什么要发明 `default`？（解决“毁灭性更新”）**
+
+想象一下，你写了一个牛逼的框架，全世界有 100 万个类实现了你的 `Electronic` 接口。
+
+有一天，你想给这个接口增加一个 `checkBattery()`（检查电池）的功能：
+
+- **没有 `default` 时**：你一旦加上这个抽象方法，全世界这 100 万个类在升级框架时都会**编译失败**，因为它们没实现这个新方法。你会收到 100 万封投诉信。
+- **有了 `default` 后**：你把 `checkBattery()` 定义为 `default`。这 100 万个类**不需要改任何代码**就能顺利升级，且它们自动拥有了“检查电池”的功能。
+
+这在编程里叫作 **“向下兼容性（Backward Compatibility）”**。
+
+| **特性**             | **抽象方法 (int getUse();)**       | **默认方法 (default void print();)** |
+| -------------------- | ---------------------------------- | ------------------------------------ |
+| **是否有 `{ }`**     | **没有**，以分号结尾               | **必须有**，包含代码逻辑             |
+| **子类是否强制实现** | **必须实现**，否则子类也得是抽象类 | **可选**，可以直接继承使用           |
+| **存在的目的**       | 订立**强制**标准                   | 提供**通用**逻辑，方便接口扩展       |
+| **调用方式**         | 通过子类对象调用                   | 通过子类对象调用                     |
+
+
+
+**1）接口不允许直接实例化**，否则编译器会报错。
+
+![8.interface-04](assets/javaAssets/8.interface-04.png)
+
+需要定义一个类去实现接口，见下例。
+
+```JAVA
+public class Computer implements Electronic {
+
+    public static void main(String[] args) {
+        new Computer();
+    }
+
+    @Override
+    public int getElectricityUse() {
+        return 0;
+    }
+}
+```
+
+然后再实例化。
+
+```JAVA
+Electronic e = new Computer();
+```
+
+
+
+**2）接口可以是空的**，既可以不定义变量，也可以不定义方法。最典型的例子就是 Serializable 接口，在 `java.io` 包下。
+
+```java
+public interface Serializable {
+}
+```
+
+Serializable 接口用来为序列化的具体实现提供一个标记，也就是说，只要某个类实现了 Serializable 接口，那么它就可以用来序列化了。
+
+**3）不要在定义接口的时候使用 final 关键字**，否则会报编译错误，因为接口就是为了让子类实现的，而 final 阻止了这种行为。
+
+`interface`（接口）是为了“求合伙”，而 `final` 是为了“搞封闭”。**`final` 的使命**：它是一道**“终点线”**。如果它修饰一个类，说明这个类**不能被继承**；如果修饰一个方法，说明这个方法**不能被重写**。它的口号是：**“到此为止，不许更改。”**
+
+![8.interface-05](assets/javaAssets/8.interface-05.png)
+
+
+
+**4）接口的抽象方法不能是 private、protected 或者 final**，否则编译器都会报错。
+
+![8.interface-06](assets/javaAssets/8.interface-06.png)
+
+**5）接口的变量是隐式 `public static final`（常量）**，所以其值无法改变。
+
+
+
+#### 02、接口的作用
+
+**第一，使某些实现类具有我们想要的功能**，比如说，实现了 Cloneable 接口的类具有拷贝的功能，实现了 Comparable 或者 Comparator 的类具有比较功能。
+
+Cloneable 和 Serializable 一样，都属于标记型接口，它们内部都是空的。实现了 Cloneable 接口的类可以使用 `Object.clone()` 方法，否则会抛出 CloneNotSupportedException。
+
+```java
+public class CloneableTest implements Cloneable {
+    @Override
+    protected Object clone() throws CloneNotSupportedException {
+        return super.clone();
+    }
+
+    public static void main(String[] args) throws CloneNotSupportedException {
+        CloneableTest c1 = new CloneableTest();
+        CloneableTest c2 = (CloneableTest) c1.clone();
+    }
+}
+```
+
+> **`c1 = new CloneableTest()`**：你在内存的堆区（Heap）开辟了一块空间，打上了 `c1` 的标记。
+>
+> **`c2 = (CloneableTest) c1.clone()`**：注意！`clone()` 方法的内部逻辑是：**“去内存里再找一块新空地，把 `c1` 里的内容一模一样地刻在上面，然后给这块新空地打上 `c2` 的标记。”**
+>
+> 所以，虽然你只写了一个 `new`，但 **`clone()` 相当于帮你执行了第二次“隐形的 `new`”**。
+>
+> ### 2. 为什么 `==` 结果是 `false`？
+>
+> 在 Java 中，对于**对象**来说，c1`==`c2 比较的不是“长得像不像”，而是**“地址是不是同一个”**。
+>
+> - **`c1` 的地址**：比如是 `0x001`。
+> - **`c2` 的地址**：因为它是被克隆出来的独立副本，它的地址是 `0x002`。
+
+
+
+
+
+运行后没有报错。现在把 `implements Cloneable` 去掉。
+
+运行后抛出 CloneNotSupportedException：
+
+```
+Exception in thread "main" java.lang.CloneNotSupportedException: JavaBase.oopExample.InterfaceExample.CloneableTest
+	at java.base/java.lang.Object.clone(Native Method)
+	at JavaBase.oopExample.InterfaceExample.CloneableTest.clone(CloneableTest.java:7)
+	at JavaBase.oopExample.InterfaceExample.CloneableTest.main(CloneableTest.java:13)
+```
+
+
+
+**第二，Java 原则上只支持单一继承，但通过接口可以实现多重继承的目的**。
+
+如果有两个类共同继承（extends）一个父类，那么父类的方法就会被两个子类重写。然后，如果有一个新类同时继承了这两个子类，那么在调用重写方法的时候，编译器就不能识别要调用哪个类的方法了。这也正是著名的菱形问题，见下图。
+<div align="center">
+  <img src="assets/javaAssets/8.interface-07.png" width="55%">
+</div>
+
+简单解释下，ClassC 同时继承了 ClassA 和 ClassB，ClassC 的对象在调用 ClassA 和 ClassB 中重写的方法时，就不知道该调用 ClassA 的方法，还是 ClassB 的方法。
+
+接口没有这方面的困扰。来定义两个接口，Fly 接口会飞，Run 接口会跑。
+
+```java
+public interface Fly {
+    void fly();
+}
+public interface Run {
+    void run();
+}
+```
+
+然后让 Pig 类同时实现这两个接口。
+
+```java
+public class Pig implements Fly,Run{
+    @Override
+    public void fly() {
+        System.out.println("会飞的猪");
+    }
+
+    @Override
+    public void run() {
+        System.out.println("会跑的猪");
+    }
+}
+```
+
+在某种形式上，接口实现了多重继承的目的：现实世界里，猪的确只会跑，但在雷军的眼里，站在风口的猪就会飞，这就需要赋予这只猪更多的能力，通过抽象类是无法实现的，只能通过接口。
+
+
+
+**第三，实现多态**
+
+什么是多态呢？通俗的理解，就是同一个事件发生在不同的对象上会产生不同的结果，鼠标左键点击窗口上的 X 号可以关闭窗口，点击超链接却可以打开新的网页。
+
+多态可以通过继承（`extends`）的关系实现，也可以通过接口的形式实现。
+
+Shape 接口表示一个形状。
+
+```java
+public interface Shape {
+    String name();
+}
+```
+
+Circle 类实现了 Shape 接口，并重写了 `name()` 方法。
+
+```java
+public class Circle implements Shape {
+    @Override
+    public String name() {
+        return "圆";
+    }
+}
+```
+
+Square 类也实现了 Shape 接口，并重写了 `name()` 方法。
+
+```java
+public class Square implements Shape {
+    @Override
+    public String name() {
+        return "正方形";
+    }
+}
+```
+
+然后来看测试类。
+
+```java
+List<Shape> shapes = new ArrayList<>();
+Shape circleShape = new Circle();
+Shape squareShape = new Square();
+
+shapes.add(circleShape);
+shapes.add(squareShape);
+
+for (Shape shape : shapes) {
+    System.out.println(shape.name());
+}
+```
+
+这就实现了多态，变量 circleShape、squareShape 的引用类型都是 Shape，但执行 `shape.name()` 方法的时候，Java 虚拟机知道该去调用 Circle 的 `name()` 方法还是 Square 的 `name()` 方法。
+
+说一下多态存在的 3 个前提：
+
+- 1、要有继承关系，比如说 Circle 和 Square 都实现了 Shape 接口。
+- 2、子类要重写父类的方法，Circle 和 Square 都重写了 `name()` 方法。
+- 3、父类引用指向子类对象，circleShape 和 squareShape 的类型都为 Shape，但前者指向的是 Circle 对象，后者指向的是 Square 对象。
+
+
+
+然后，我们来看一下测试结果：
+
+```
+圆
+正方形
+```
+
+也就意味着，尽管在 for 循环中，shape 的类型都为 Shape，但在调用 `name()` 方法的时候，它知道 Circle 对象应该调用 Circle 类的 `name()` 方法，Square 对象应该调用 Square 类的 `name()` 方法。
+
+
+
+#### 03、接口的三种模式
+
+**在编程领域，好的设计模式能够让我们的代码事半功倍**。在使用接口的时候，经常会用到三种模式，分别是策略模式、适配器模式和工厂模式。
+
+**1）策略模式**
+
+策略模式的思想是，针对一组算法，将每一种算法封装到具有共同接口的实现类中，接口的设计者可以在不影响调用者的情况下对算法做出改变。示例如下：
+
+```java
+package JavaBase.oopExample.InterfaceExample;
+
+ interface Coach {
+    void defend();
+}
+
+
+class Danny implements Coach{
+
+    @Override
+    public void defend() {
+        System.out.println("注意BP");
+    }
+}
+
+class TeacherMa implements Coach{
+
+    @Override
+    public void defend() {
+        System.out.println("干就完了");
+    }
+}
+
+class Homme implements Coach{
+
+    @Override
+    public void defend() {
+        System.out.println("全体入侵对方f6");
+    }
+}
+
+public class Demo{
+    public static void defend(Coach coach){
+        coach.defend();
+    }
+
+
+    public static void main(String[] args) {
+        defend(new TeacherMa());
+        defend(new Danny());
+    }
+}
+```
+
+<span style="color:red">注意这里的`Coach coach`并非实例化(**接口绝非可以实例化**),这里的 `Coach coach` 的意思是：**“我这个方法需要一个参数，这个参数必须是‘拿到了 Coach 证书’的人**</span>
+
+当调用 `defend(new Danny())` 时：
+
+1. `new Danny()` 创建了一个真正的对象（实体）。
+2. 这个对象被赋值给了 `coach` 这个标签。
+3. 虽然 `coach` 的类型是 `Coach`，但它背后指着的那个魂魄是 `Danny`。
+
+
+
+**2.为什么能写 `defend(xx)`？接口定义里明明没有参数！**
+
+第一个 `defend`：接口里的“动作”（没参数）
+
+```java
+interface Coach {
+    void defend(); // 我们叫它“执行防守动作”
+}
+```
+
+这个方法是定义给 **具体教练** 做的。比如 Danny 去防守，他不需要参数，他自己知道怎么做。
+
+
+
+第二个 `defend`：Demo 类里的“指挥工具”（有参数）
+
+```java
+public class Demo {
+    // 我们叫它“指挥某位教练去防守”
+    public static void defend(Coach coach) { 
+        coach.defend(); // 这里的 coach 就是你传进来的那个“人”
+    }
+}
+```
+
+**重点来了：** 在 `main` 方法里调用的是 `Demo.defend(new Danny())`。
+
+- 你调用的是 **Demo 类里的静态方法**。
+- 这个方法确实定义了一个参数 `Coach coach`。
+- **作用：** 这个方法像是一个“指挥官”。你得告诉指挥官：“请 **Danny** 去防守”。那个 **Danny** 就是传进去的参数。
+
+
+
+<span style="color:teal">`Demo.defend()` 方法可以接受不同风格的 Coach，并根据所传递的参数对象的不同而产生不同的行为，这被称为“**策略模式**”。</span>
+
+这句话说得非常精辟。如果说**“多态”**是 Java 提供的**武器**，那么**“策略模式”**就是你使用这把武器的一种**高级战术**。
+
+
+
+**1. 核心理解：算法（策略）的自由切换**
+
+在代码里，“如何防守”就是一个**策略（Strategy）**。
+
+- **不变的部分（抽象策略）**：所有教练都必须有“防守”这个动作（`Coach` 接口）。这就是**规则**。
+- **变化的部分（具体策略）**：
+  - Danny 的策略是“研究 BP”。
+  - 马老师的策略是“干就完了”。
+  - Homme 的策略是“入侵 F6”。
+
+**策略模式的精髓：** 你的 `Demo.defend(Coach coach)` 方法像是一个**通用的播放器**，而具体的教练对象就像是不同的**光盘**。播放器本身不需要改动，你插什么盘，它就播什么内容。
+
+
+
+**2.为什么要叫“策略”？（对比“硬编码”）**
+
+为了理解“策略模式”的伟大，我们看看**如果不使用它**，你的代码会变得多复杂：
+
+```java
+// 反面教材：不用策略模式，用传统的 if-else
+public static void defend(String coachName) {
+    if (coachName.equals("TeacherMa")) {
+        System.out.println("干就完了");
+    } else if (coachName.equals("Danny")) {
+        System.out.println("注意BP");
+    } else if (coachName.equals("Homme")) {
+        System.out.println("全体入侵对方f6");
+    }
+}
+```
+
+**这种写法的致命伤：**
+
+- **死板**：每增加一个新教练，都得回来修改 `defend` 方法，加一个 `else if`。
+- **违背开闭原则**：好的代码应该对扩展开放（加新教练），对修改关闭（不动旧代码）。
+
+**而策略模式写法：** 当写好了 `defend(Coach coach)` 之后，这个方法就**“退役”**了——开发者永远不需要再改它。想加新战术？直接新建一个类实现 `Coach` 接口就行。
+
+
+
+**2）适配器模式**
+
+适配器模式的思想是，针对调用者的需求对原有的接口进行转接。生活当中最常见的适配器就是HDMI（英语：`High Definition Multimedia Interface`，中文：高清多媒体接口）线，可以同时发送音频和视频信号。适配器模式的示例如下
+
+```java
+package JavaBase.oopExample.InterfaceExample;
+
+interface Coach2 {
+    void defend();
+
+    void attack();
+}
+
+
+abstract class AdapterCoach implements Coach2 {
+    @Override
+    public void defend() {}
+
+    @Override
+    public void attack() {}
+}
+
+class Condi extends AdapterCoach{
+    @Override
+    public void defend() {
+        System.out.println("不要怂 就是干");
+    }
+}
+
+public class Demo2 {
+    public static void main(String[] args) {
+        Coach2 coach2 = new Condi();
+        coach2.attack();
+        coach2.defend();
+    }
+}
+
+```
+
+惯例先来解释一下代码:
+
+**`Coach2 coach2 = new Condi();` 的意义是什么？**
+
+这一行代码就是大名鼎鼎的 **“向上转型”**（Upcasting），它是实现 **“多态”** 的核心步骤。
+
+**核心意义：解耦（Decoupling）**
+
+- **左边 `Coach2 coach2`（类型）**：这是一个**接口引用**。它像是一个“遥控器”或“身份标签”。它规定了你只能按 `defend()` 和 `attack()` 这两个按键。
+- **右边 `new Condi()`（对象）**：这是**真实的实体**。它是具体的执行者。
+
+**为什么要这样写，而不是 `Condi c = new Condi();`？** 想象一下，如果你的项目经理要求明天把 `Condi` 换成 `LeeSin`。
+
+- **如果你写死为 `Condi c`**：你可能需要修改代码中所有用到 `c` 的地方。
+- **如果你写为 `Coach2 coach2`**：你只需要修改 `new` 后面的内容：`Coach2 coach2 = new LeeSin();`。**下面的 `coach2.attack()` 一行代码都不用动！**
+
+> **一句话总结**：这让你的程序不再关注具体的“人”，而只关注他的“职位（接口）”。只要你在这个职位上，我就能按标准调遣你。
+
+
+
+| **维度**     | **直接实现接口**           | **使用适配器模式**                       |
+| ------------ | -------------------------- | ---------------------------------------- |
+| **代码量**   | 必须实现接口内**所有**方法 | 只需要实现**感兴趣**的方法               |
+| **灵活性**   | 较低，代码冗余             | 高，子类代码非常简洁                     |
+| **适用场景** | 接口方法很少（1-2 个）     | 接口方法很多，但实现类只需要其中一小部分 |
+
+
+
+Coach 接口中定义了两个方法（`defend()` 和 `attack()`），如果类直接实现该接口的话，就需要对两个方法进行实现。
+
+如果我们只需要对其中一个方法进行实现的话，就可以使用一个抽象类作为中间件，即适配器（AdapterCoach），用这个抽象类实现接口，并对抽象类中的方法置空（方法体只有一对花括号），这时候，新类就可以绕过接口，继承抽象类，我们就可以只对需要的方法进行覆盖，而不是接口中的所有方法
+
+
+
+**3）工厂模式**
+
+所谓的工厂模式理解起来也不难，就是什么工厂生产什么，比如说宝马工厂生产宝马，奔驰工厂生产奔驰，A 级学院毕业 A 级教练，C 级学院毕业 C 级教练。示例如下：
+
+```java
+// 教练
+interface Coach {
+    void command();
+}
+
+// 教练学院
+interface CoachFactory {
+    //承诺返回一个符合 Coach 接口的对象。
+    Coach createCoach();
+}
+
+// A级教练
+class ACoach implements Coach {
+
+    @Override
+    public void command() {
+        System.out.println("我是A级证书教练");
+    }
+    
+}
+
+// A级教练学院
+class ACoachFactory implements CoachFactory {
+
+    @Override
+    public Coach createCoach() {
+        return new ACoach();
+    }
+    
+}
+
+// C级教练
+class CCoach implements Coach {
+
+    @Override
+    public void command() {
+        System.out.println("我是C级证书教练");
+    }
+    
+}
+
+// C级教练学院
+class CCoachFactory implements CoachFactory {
+
+    @Override
+    public Coach createCoach() {
+        return new CCoach();
+    }
+    
+}
+
+public class Demo {
+    public static void create(CoachFactory factory) {
+        factory.createCoach().command();
+    }
+    
+    public static void main(String[] args) {
+        // 对于一支球队来说，需要什么样的教练就去找什么样的学院
+        // 学院会介绍球队对应水平的教练。
+        create(new ACoachFactory());
+        create(new CCoachFactory());
+    }
+}
+```
+有两个接口，一个是 Coach（教练），可以 command()（指挥球队）；另外一个是 CoachFactory（教练学院），能 createCoach()（教出一名优秀的教练）。然后 ACoach 类实现 Coach 接口，ACoachFactory 类实现 CoachFactory 接口；CCoach 类实现 Coach 接口，CCoachFactory 类实现 CoachFactory 接口。当需要 A 级教练时，就去找 A 级教练学院；当需要 C 级教练时，就去找 C 级教练学院。
+
+依次类推，我们还可以用 BCoach 类实现 Coach 接口，BCoachFactory 类实现 CoachFactory 接口，从而不断地丰富教练的梯队。
+
+这段代码展示的是工厂方法模式（Factory Method Pattern），它是设计模式中的“名门望族”。
+
+你已经写出了它的精髓：将对象的“生产过程”彻底解耦。 如果说之前的“策略模式”是让你灵活地用工具，那么“工厂模式”就是让你灵活地造工具。
+
+**1.为什么要搞这么复杂？（核心痛点）**
+你可能会想：“我直接在 main 里 new ACoach() 不行吗？非要绕个弯造个工厂？”
+
+想象一下，如果你是一个俱乐部老板（Client/Demo3）：
+
+没有工厂：你得亲自去人才市场筛选、面试、签合同（new ACoach()）。如果以后教练的入职流程变复杂了（构造函数多了 10 个参数），你这个老板得亲自改简历。
+
+有了工厂：你只需要联系专门的猎头公司（ACoachFactory）。你跟猎头说：“给我派个教练来！”猎头就把人（ACoach）送过来了。你不需要知道他是怎么被招进来的，你只需要下令 command() 即可。
+
+
+
+**2.工厂模式的四大角色**
+
+| **角色**     | **代码中的类**                   | **职责**                                                |
+| ------------ | -------------------------------- | ------------------------------------------------------- |
+| **抽象产品** | `Coach3`                         | 定义了产品的标准（必须会 `command`）。                  |
+| **具体产品** | `ACoach`, `CCoach`               | 标准的具体实现（A级教练、C级教练）。                    |
+| **抽象工厂** | `CoachFactory`                   | 规定了“猎头公司”必须具备“提供教练”的能力。              |
+| **具体工厂** | `ACoachFactory`, `CCoachFactory` | 真正的“造人”机构。`ACoachFactory` 只负责生产 `ACoach`。 |
+
+
+
+**3.解读 create(CoachFactory factory) 的魔法**
+这一行代码是整个模式的“灵魂之笔”：
+
+```java
+public static void create(CoachFactory factory){
+    factory.createCoach().command();
+}
+```
+
+**极致解耦**：这个 `create` 方法完全不知道 `ACoach` 的存在，它只认 `CoachFactory`。
+
+**连环多态**：
+
+1. 第一层：`factory` 是多态的，它可能是 A 工厂也可能是 C 工厂。
+2. 第二层：`factory.createCoach()` 返回的对象也是多态的，它只要符合 `Coach3` 接口就行。
+
+**结果**：你可以在不修改 `create` 方法任何一行代码的情况下，无限增加 `SCoach`、`GlobalCoach` 等。这完美符合了 **“开闭原则”**（对扩展开放，对修改关闭）。
+
+
+
+**4. 什么时候该用工厂模式？**
+
+1. **当一个类不知道它所必须创建的对象的类的时候**：老板不知道明天需要哪种教练。
+2. **当一个类希望由其子类来指定它所创建的对象的时候**：把 `new` 的权利下交给具体的工厂。
+3. **当创建对象的逻辑很复杂时**：比如创建一个教练需要先检查证书、背调、分配宿舍等，这些逻辑写在工厂里，能保证 `main` 方法的清爽。
+
+
+
+**5. 你的代码逻辑演进图**
+
+1. **`Demo3` 调用 `create(new ACoachFactory())`**。
+2. **`ACoachFactory` 里的 `createCoach()` 启动，执行 `new ACoach()`**。
+3. **返回一个 `ACoach` 实例给 `Demo3`**。
+4. **`Demo3` 拿着这个实例（哪怕它以为这只是个普通的 `Coach3`）执行 `command()`**。
+
+> [!TIP] **小细节**：你把工厂类也做成了接口（`CoachFactory`），这是非常高级的写法。这意味着你可以根据不同的环境（比如测试环境、生产环境）切换不同的工厂。
+
+
+
+#### 04其他 
+
+如果你的目标是：**“一部分方法必须强制实现，另一部分方法可以随意偷懒”**，那么 `default` 和 `Adapter` 确实是两种最核心的手段。
+
+但它们在 **“强制力”** 和 **“代码结构”** 上有着微妙的差别。我们可以把这两种方式看作是**“混合合同”**的两种签署方式：
+
+------
+
+**1. 方式一：`default` 混合模式（现代派）**
+
+这是 Java 8 之后最推荐的做法。你直接在接口里玩“加减法”。
+
+- **强制的部分**：不加 `default`，保持纯抽象。
+- **自由的部分**：加上 `default`，给个空实现 `{ }`。
+
+```java
+interface Coach {
+    // 强制：没这个按键你就不叫教练！
+    void defend(); 
+
+    // 自由：想攻就攻，不想攻用默认的（空动作）
+    default void attack() {} 
+}
+```
+
+**优点**：
+
+1. **极简**：不需要额外的抽象类，结构非常扁平。
+2. **不占名额**：实现类依然可以 `extends` 另一个父类（Java 是单继承的）。
+
+------
+
+**2. 方式二：适配器模式（经典派）**
+
+虽然 `default` 很香，但适配器模式（你的 `AdapterCoach`）在某些特定场景下依然无可替代。
+
+如果你想强制实现某些方法，你的适配器类应该这样写：
+
+```java
+abstract class AdapterCoach implements Coach2 {
+    // 这里故意不写 defend() 的实现，或者把它声明为抽象
+    // 这样继承 AdapterCoach 的类依然被强制要求写 defend()
+
+    @Override
+    public void attack() {} // 帮子类把 attack 给做了（空实现）
+}
+```
+
+**为什么还要用它？**
+
+1. **保护旧接口**：如果你引用的接口是第三方提供的（你改不了源码，加不了 `default`），你只能自己写个适配器来挡箭。
+2. **更复杂的预处理**：适配器里可以写一些复杂的逻辑，而接口的 `default` 方法通常只建议写非常简单的默认行为。
+
+------
+
+**3. 核心对比：你该选哪种？**
+
+| **特性**     | **default 关键字**                 | **Adapter 抽象类**                             |
+| ------------ | ---------------------------------- | ---------------------------------------------- |
+| **层级结构** | **扁平**。只有 1 层关系。          | **深层**。多了一个中间层。                     |
+| **强制力**   | 接口定义死，编译器直接盯着。       | 通过抽象类“过滤”，更灵活。                     |
+| **继承权**   | **不占用**。实现类还能继承别的类。 | **占用**。子类继承了适配器，就不能继承别的了。 |
+| **适用版本** | Java 8 及以上。                    | 所有 Java 版本。                               |
+
+------
+
+**4. 深度理解：这是一种“契约的分级”**
+
+你可以把这种设计理解为**“核心条款”**与**“附加条款”**：
+
+- **核心条款（抽象方法）**：这是你作为这个角色的**底线**。比如作为 `Coach`，你必须会 `defend`，这是强制的。
+- **附加条款（default/Adapter 实现）**：这是**赠送功能**。如果你有特殊需求，你可以改（重写）；如果你没需求，就用默认的。
+
+------
+
+**总结**
+
+1. **想强制**：就让它保持 **`abstract`**（接口里不加 `default`，适配器里不去实现它）。
+2. **想自由**：就给它一个 **`{ }`**（接口里加 `default`，或者适配器里写个空实现）。
+
+这就是 Java 灵活性的来源：**它既能用强力约束保证系统的稳定性，又能用默认实现给开发者留出“偷懒”的空间。**
+
+
+
+#### 05 各个设计模式使用情况
+
+| **模式/方式**              | **使用频次** | **核心优势**                                                 | **解决的问题**                               |
+| -------------------------- | ------------ | ------------------------------------------------------------ | -------------------------------------------- |
+| **面向接口/策略模式**      | ⭐⭐⭐⭐⭐ (极高) | **极致灵活性**。调用者不需要知道你是谁，只要能用就行。       | 解决“代码写死”的问题，实现功能切换。         |
+| **适配器模式 (Adapter)**   | ⭐⭐⭐ (中)     | **代码整洁度**。子类可以“偷懒”，只关心自己想做的事。         | 解决“臃肿接口”带来的空方法冗余。             |
+| **工厂方法模式 (Factory)** | ⭐⭐⭐⭐ (高)    | **生产过程解耦**。对象的创建逻辑被隐藏，以后换型号不影响业务。 | 解决“对象创建太复杂”或“不知道该造谁”的问题。 |
+
+**① 策略模式：程序员的“基本功”**
+
+你在 `Demo` 里写的 `defend(Coach coach)` 就是这个。
+
+- **优势**：它是实现“多态”的最直接方式。它把“行为”从“类”里抽离出来。
+- **应用场景**：只要你有超过一种实现方式（比如：不同的支付方式、不同的教练风格、不同的排序算法），你就在用它。
+- **使用现状**：它是所有设计模式的基石，是**用得最多**的。
+
+**② 适配器模式：程序员的“润滑剂”**
+
+你在 `AdapterCoach` 里写的空实现。
+
+- **优势**：它不增加功能，但能极大提高**开发效率**和**代码可读性**。它让你的具体类（如 `Condi`）变得非常纯粹。
+- **应用场景**：常用于处理那些“大而全”的接口。比如 Windows 窗口监听器有 7、8 个方法（关闭、最小化、激活等），你只想处理“关闭”，如果不加适配器，你得写 7 个空方法。
+- **注意**：在 Java 8 引入 `default` 关键字后，这种**“抽象类适配器”**的使用率在下降，因为我们可以直接在接口里写默认实现了。
+
+**③ 工厂模式：系统的“流水线”**
+
+你在 `Demo3` 里写的 `create(CoachFactory factory)`。
+
+- **优势**：**封装性**。当一个对象的创建过程很麻烦（比如要连数据库、要读取配置、要初始化一堆参数）时，工厂能保证每次造出来的对象都是合格的。
+- **应用场景**：在框架设计中无处不在。比如 Spring 的核心就是 `BeanFactory`。它让业务逻辑（`Demo3`）和对象的来源（`Factory`）彻底分手。
+- **使用现状**：在大型项目、涉及多方协作、或需要根据环境动态生成对象时，它是**不可替代**的。
+
+ 
+
+
+
+#### 04、抽象类和接口的区别
+
+简单总结一下抽象类和接口的区别。
+
+在 Java 中，通过关键字 `abstract` 定义的类叫做抽象类。Java 是一门面向对象的语言，因此所有的对象都是通过类来描述的；但反过来，并不是所有的类都是用来描述对象的，抽象类就是其中的一种。
+
+以下示例展示了一个简单的抽象类：
+
+```java
+// 个人认为，一名教练必须攻守兼备
+abstract class Coach {
+	public abstract void defend();
+
+	public abstract void attack();
+}
+```
+
+我们知道，有抽象方法的类被称为抽象类，也就意味着抽象类中还能有不是抽象方法的方法。这样的类就不能算作纯粹的接口，尽管它也可以提供接口的功能——只能说抽象类是普通类与接口之间的一种中庸之道。
+
+
+
+**接口（英文：Interface），在 Java 中是一个抽象类型，是抽象方法的集合**；接口通过关键字 `interface` 来定义。接口与抽象类的不同之处在于：
+
+
+
+- 1、抽象类可以有方法体的方法，但接口没有（Java 8 以前）。
+- 2、接口中的成员变量隐式为 `static final`，但抽象类不是的。
+- 3、一个类可以实现多个接口，但只能继承一个抽象类。
+
+
+
+以下示例展示了一个简单的接口：
+
+```java
+// 隐式的abstract
+interface Coach {
+	// 隐式的public
+	void defend();
+	void attack();
+}
+```
+
+- 接口是隐式抽象的，所以声明时没有必要使用 `abstract` 关键字；
+- 接口的每个方法都是隐式抽象的，所以同样不需要使用 `abstract` 关键字；
+- 接口中的方法都是隐式 `public` 的。
+
+
+
+那么抽象类和接口有什么差别呢？
+
+**1）语法层面上**
+
+- 抽象类可以包含具体方法的实现；而在接口中，方法默认是 public abstract 的，但从 Java 8 开始，接口也可以包含有实现的默认方法和静态方法。
+- 抽象类中的成员变量可以是各种类型的，而接口中的成员变量只能是 public static final 类型的；
+- 接口中不能含有静态代码块，而抽象类可以有静态代码块；
+- 一个类只能继承一个抽象类，而一个类却可以实现多个接口
+
+
+
+
+
+**2）设计层面上**
+
+抽象类是对一种事物的抽象，即对类抽象，继承抽象类的子类和抽象类本身是一种 `is-a` 的关系。而接口是对行为的抽象。抽象类是对整个类整体进行抽象，包括属性、行为，但是接口却是对类局部（行为）进行抽象。
+
+举个简单的例子，飞机和鸟是不同类的事物，但是它们都有一个共性，就是都会飞。那么在设计的时候，可以将飞机设计为一个类 Airplane，将鸟设计为一个类 Bird，但是不能将 飞行 这个特性也设计为类，因此它只是一个行为特性，并不是对一类事物的抽象描述。
+
+此时可以将 飞行 设计为一个接口 Fly，包含方法 fly()，然后 Airplane 和 Bird 分别根据自己的需要实现 Fly 这个接口。然后至于有不同种类的飞机，比如战斗机、民用飞机等直接继承 Airplane 即可，对于鸟也是类似的，不同种类的鸟直接继承 Bird 类即可。从这里可以看出，继承是一个 "是不是"的关系，而 接口 实现则是 "有没有"的关系。如果一个类继承了某个抽象类，则子类必定是抽象类的种类，而接口实现则是有没有、具备不具备的关系，比如鸟是否能飞（或者是否具备飞行这个特点），能飞行则可以实现这个接口，不能飞行就不实现这个接口。
+
+接口是对类的某种行为的一种抽象，接口和类之间并没有很强的关联关系，举个例子来说，所有的类都可以实现 [`Serializable` 接口](https://javabetter.cn/io/Serializbale.html)，从而具有序列化的功能，但不能说所有的类和 Serializable 之间是 `is-a` 的关系。
+
+抽象类作为很多子类的父类，它是一种模板式设计。而接口是一种行为规范，它是一种辐射式设计。什么是模板式设计？最简单例子，大家都用过 ppt 里面的模板，如果用模板 A 设计了 ppt B 和 ppt C，ppt B 和 ppt C 公共的部分就是模板 A 了，如果它们的公共部分需要改动，则只需要改动模板 A 就可以了，不需要重新对 ppt B 和 ppt C 进行改动。而辐射式设计，比如某个电梯都装了某种报警器，一旦要更新报警器，就必须全部更新。也就是说对于抽象类，如果需要添加新的方法，可以直接在抽象类中添加具体的实现，子类可以不进行变更；而对于接口则不行，如果接口进行了变更，则所有实现这个接口的类都必须进行相应的改动。
+
+
+
+### Java内部类
+
+分为**成员内部类、局部内部类、匿名内部类、静态内部类**
+
+在 Java 中，可以将一个类定义在另外一个类里面或者一个方法里面，这样的类叫做内部类。
+
+#### 1）成员内部类
+
+成员内部类是最常见的内部类，看下面的代码：
+
+```java
+class Wanger {
+    int age = 18;
+    
+    class Wangxiaoer {
+        int age = 81;
+    }
+}
+```
+
+看起来内部类 Wangxiaoer 就好像 Wanger 的一个成员，成员内部类可以无限制访问外部类的所有成员属性。
+
+```java
+public class Wanger {
+    int age = 18;
+    private String name = "沉默王二";
+    static double money = 1;
+
+    class Wangxiaoer {
+        int age = 81;
+        
+        public void print() {
+            System.out.println(name);
+            System.out.println(money);
+        }
+    }
+}
+```
+
+内部类可以随心所欲地访问外部类的成员，但外部类想要访问内部类的成员，就不那么容易了，必须先创建一个成员内部类的对象，再通过这个对象来访问：
 
 
 
