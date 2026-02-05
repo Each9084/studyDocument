@@ -982,3 +982,171 @@ ON l1.user_id = l2.user_id AND l2.date = DATE_ADD(l1.base_date,INTERVAL 1 DAY)
 GROUP BY date;
 ```
 
+
+
+
+
+
+
+### **SQL280** **牛客的课程订单分析(五)**
+
+**描述**
+
+有很多同学在牛客购买课程来学习，购买会产生订单存到数据库里。
+
+有一个订单信息表(order_info)，简况如下:
+
+| id   | user_id   | product_name | status       | client_id | date       |
+| ---- | --------- | ------------ | ------------ | --------- | ---------- |
+| 1    | 557336    | C++          | no_completed | 1         | 2025-10-10 |
+| 2    | 230173543 | Python       | completed    | 2         | 2025-10-12 |
+| 3    | 57        | JS           | completed    | 3         | 2025-10-23 |
+| 4    | 57        | C++          | completed    | 3         | 2025-10-23 |
+| 5    | 557336    | Java         | completed    | 1         | 2025-10-23 |
+| 6    | 57        | Java         | completed    | 1         | 2025-10-24 |
+| 7    | 557336    | C++          | completed    | 1         | 2025-10-25 |
+| 8    | 557336    | Python       | completed    | 1         | 2025-10-26 |
+
+第1行表示user_id为557336的用户在2025-10-10的时候使用了client_id为1的客户端下了C++课程的订单，但是状态为没有购买成功。
+
+第2行表示user_id为230173543的用户在2025-10-12的时候使用了client_id为2的客户端下了Python课程的订单，状态为购买成功。
+
+......
+
+最后1行表示user_id为557336的用户在2025-10-26的时候使用了client_id为1的客户端下了Python课程的订单，状态为购买成功。
+
+
+
+
+
+请你写出一个sql语句查询在2025-10-15以后，如果有一个用户下单2个以及2个以上状态为购买成功的C++课程或Java课程或Python课程，那么输出这个用户的user_id，以及满足前面条件的第一次购买成功的C++课程或Java课程或Python课程的日期first_buy_date，以及满足前面条件的第二次购买成功的C++课程或Java课程或Python课程的日期second_buy_date，以及购买成功的C++课程或Java课程或Python课程的次数cnt，并且输出结果按照user_id升序排序，以上例子查询结果如下:
+
+| user_id | first_buy_date | second_buy_date | cnt  |
+| ------- | -------------- | --------------- | ---- |
+| 57      | 2025-10-23     | 2025-10-24      | 2    |
+| 557336  | 2025-10-23     | 2025-10-25      | 3    |
+
+解析:
+
+id为4，6的订单满足以上条件，输出57，id为4的订单为第一次购买成功，输出first_buy_date为2025-10-23，id为6的订单为第二次购买，输出second_buy_date为2025-10-24，总共成功购买了2次;
+
+id为5，7，8的订单满足以上条件，输出557336，id为5的订单为第一次购买成功，输出first_buy_date为2025-10-23，id为7的订单为第二次购买，输出second_buy_date为2025-10-25，总共成功购买了3次;
+
+
+
+<SPAN STYLE="COLOR:TEAL">思路</SPAN>
+
+<SPAN STYLE="COLOR:TEAL">这个重点是在怎么处理first和second上,如果说知识处理第一天很简单直接`MIN`就行,但是涉及多天的我们可以第一时间想到的就是`ROW_NUMBER`</SPAN>
+
+<SPAN STYLE="COLOR:TEAL">那么们可以通过`CASE WHEN `来筛选rn为1和2的情况</SPAN>
+
+<SPAN STYLE="COLOR:TEAL">第二种方案是 通过` LEAD(date) OVER (PARTITION BY user_id ORDER BY date) AS second_buy_date`,这个意思是-- LEAD(date) 意思是：看同一个用户的下一行 date 是多少</SPAN>
+
+
+
+<span style="color:red">关于第一种的`CASE WHEN`要特别注意,一定不要直接`CASE WHEN rn=1 THEN date AS first_buy_date ELSE WHEN rn=2 THEN date AS second_buy_date `</span>
+
+<span style="color:red">这样子是不行的,因为会产生一个问题:</span>
+
+> **1.问题所在**
+>
+> 假设用户 `557336` 有两行数据：
+>
+> - 第一行：`rn=1`, `date='2025-10-23'`
+> - 第二行：`rn=2`, `date='2025-10-25'`
+>
+> 当你问数据库：“请给我 `557336` 的 `date`”时，数据库会很纠结：**“这个袋子里有两个日期，你没告诉我你要哪一个，我是该给你第一个、第二个、还是把它们加起来？”**
+>
+> 所以它干脆直接报错，告诉你：**“除了分组的依据（user_id），剩下的字段你必须用聚合函数（MIN/MAX/SUM）告诉我处理规则！”**
+>
+> 
+>
+> **2.我们来看看如果不加 `MIN`，只写 `CASE WHEN`，数据库生成的中间结果是什么样的：**
+>
+> | **user_id** | **rn** | **CASE WHEN rn=1...** | **CASE WHEN rn=2...** |
+> | ----------- | ------ | --------------------- | --------------------- |
+> | 557336      | 1      | **2025-10-23**        | *NULL*                |
+> | 557336      | 2      | *NULL*                | **2025-10-25**        |
+>
+> 你看，数据就像**“跳跳棋”**一样错开了：
+>
+> - 第一行只有第一个盒子里有东西，第二个盒子是空的（NULL）。
+> - 第二行第一个盒子是空的（NULL），第二个盒子里才有东西。
+>
+> **如果你不聚合，你得到的就是两行，这显然不是我们要的一行报表**
+>
+> 
+>
+> **3.形象理解：`MIN` 是如何把两行“拍扁”的？**
+>
+> 现在，关键的魔术来了。当我们加上 `GROUP BY user_id` 和 `MIN(...)` 时：
+>
+> **第一步：分组（打包装袋）** 数据库把属于 `557336` 的那两行“跳跳棋”丢进了一个透明袋子。
+>
+> **第二步：执行 MIN（筛选宝藏）** 我们要取 `first_buy_date`。数据库往袋子里一看，发现了两个值：`['2025-10-23', NULL]`。
+>
+> - **重点：SQL 的聚合函数（MIN, MAX, SUM）会自动忽略 `NULL`！**
+> - 数据库想：“`NULL` 是虚无，不算数。剩下的值里最小的是 `2025-10-23`。”
+> - **结果**：它从小明的袋子里精准地捡出了那个日期。
+>
+> **第三步：执行另一个 MIN** 数据库再看 `second_buy_date` 的那个位置，发现了：`[NULL, '2025-10-25']`。
+>
+> - 同样，忽略 `NULL`。
+> - **结果**：精准地捡出了 `2025-10-25`。
+>
+> 
+>
+> **4. 最终效果图**
+>
+> 经过 `MIN` 的“压榨”和“过滤”，原本松散的两行数据，被**合并（Merge）**成了一行完美的数据：
+>
+> | **user_id** | **first_buy_date** | **second_buy_date** |
+> | ----------- | ------------------ | ------------------- |
+> | 557336      | **2025-10-23**     | **2025-10-25**      |
+
+
+
+第一种方案:
+
+```sql
+SELECT user_id,
+        MIN(CASE WHEN rn = 1 THEN date END) AS first_buy_date,
+    MIN(CASE WHEN rn = 2 THEN date END) AS second_buy_date,
+        cnt
+        FROM (
+SELECT *,
+        COUNT(product_name) OVER (PARTITION BY user_id) AS cnt,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY date) AS rn
+FROM order_info
+WHERE product_name IN ('C++','Java','Python')
+AND status = 'completed'
+AND date > '2025-10-15'
+) AS t 
+WHERE cnt>=2
+GROUP BY user_id,cnt;
+```
+
+
+
+第二种方案:
+
+```sql
+SELECT user_id, first_buy_date, second_buy_date, cnt
+FROM (
+    SELECT 
+        user_id, 
+        date AS first_buy_date,
+        -- LEAD(date) 意思是：看同一个用户的下一行 date 是多少
+        LEAD(date) OVER (PARTITION BY user_id ORDER BY date) AS second_buy_date,
+        COUNT(*) OVER (PARTITION BY user_id) AS cnt,
+        ROW_NUMBER() OVER (PARTITION BY user_id ORDER BY date) AS rn
+    FROM order_info
+    WHERE product_name IN ('C++','Java','Python')
+      AND status = 'completed'
+      AND date > '2025-10-15'
+) AS t 
+-- 关键：只取每个人的第一行，因为此时这行的 LEAD 已经把第二天的日期抓过来了
+WHERE cnt >= 2 AND rn = 1
+ORDER BY user_id;
+```
+
