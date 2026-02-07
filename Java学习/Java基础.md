@@ -273,8 +273,11 @@ public class Wangsi {
 <div align="center">
   <img src="../assets/javaAssets/9.staticInnerClass.png" width="55%">
 </div>
+关于静态内部类的更多信息和介绍我们放在 static关键字的05 静态内部类重点讨论
 
-为什么要使用内部类呢？
+
+
+### 5)   为什么要使用内部类呢？
 
 这个问题问的非常妙
 
@@ -1636,4 +1639,1141 @@ Exception in thread "main" java.lang.ClassCastException: class JavaBase.oopExamp
 
 
 <img src="../assets/javaAssets/10.extendsPic19.png" width="55%" style="display: block; margin: 0 auto;">
+
+
+
+## `This`与`Super`关键字
+
+this 关键字有很多种用法，其中最常用的一个是，它可以作为引用变量，指向当前对象。
+
+除此之外， this 关键字还可以完成以下工作:
+
+- 调用当前类的方法；
+- `this()` 可以调用当前类的构造方法；
+- this 可以作为参数在方法中传递；
+- this 可以作为参数在构造方法中传递；
+- this 可以作为方法的返回值，返回当前类的对象。
+
+
+
+### 01、 指向当前对象
+
+来看这部分代码:
+
+```java
+public class WithoutThisStudent {
+    String name;
+    int age;
+
+    WithoutThisStudent(String name, int age) {
+        name = name;
+        age = age;
+    }
+
+    void out() {
+        System.out.println(name+" " + age);
+    }
+
+    public static void main(String[] args) {
+        WithoutThisStudent s1 = new WithoutThisStudent("沉默王二", 18);
+        WithoutThisStudent s2 = new WithoutThisStudent("沉默王三", 16);
+
+        s1.out();
+        s2.out();
+    }
+}
+```
+
+在上面的例子中，构造方法的参数名和实例变量名相同，由于没有使用 this 关键字，所以无法为实例变量赋值。
+
+来看一下程序的输出结果。
+
+```java
+null 0
+null 0
+```
+
+
+
+从结果中可以看得出来，尽管创建对象的时候传递了参数，但实例变量并没有赋值。这是因为如果构造方法中没有使用 this 关键字的话，name 和 age 指向的并不是实例变量而是参数本身。
+
+而解决方式就是使用`this`关键字
+
+```java
+public class WithThisStudent {
+    String name;
+    int age;
+
+    WithThisStudent(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    void out() {
+        System.out.println(name+" " + age);
+    }
+
+    public static void main(String[] args) {
+        WithThisStudent s1 = new WithThisStudent("沉默王二", 18);
+        WithThisStudent s2 = new WithThisStudent("沉默王三", 16);
+
+        s1.out();
+        s2.out();
+    }
+}
+```
+
+“再来看一下程序的输出结果。”
+
+```
+沉默王二 18
+沉默王三 16
+```
+
+这次，实例变量有值了，在构造方法中，`this.xxx` 指向的就是实例变量，而不再是参数本身了。
+
+当然了，如果参数名和实例变量名不同的话，就不必使用 this 关键字，但我建议使用 this 关键字，这样的代码更有意义。
+
+
+
+### 02、调用当前类的方法
+
+```java
+public class InvokeCurrentClassMethod {
+    void method1() {}
+    void method2() {
+        method1();
+    }
+
+    public static void main(String[] args) {
+        new InvokeCurrentClassMethod().method1();
+    }
+}
+```
+
+正如你所见,上面这段代码中没有见到 this 关键字
+
+但接下来,神奇的事情就要发生了
+
+但倘若在 classes 目录下找到 InvokeCurrentClassMethod.class 文件，然后双击打开（IDEA 默认会使用 FernFlower 打开字节码文件）
+
+```java
+public class InvokeCurrentClassMethod {
+    public InvokeCurrentClassMethod() {
+    }
+
+    void method1() {
+    }
+
+    void method2() {
+        this.method1();
+    }
+
+    public static void main(String[] args) {
+        (new InvokeCurrentClassMethod()).method1();
+    }
+}
+```
+
+此时 this 关键字就出现了
+
+我们可以在一个类中使用 this 关键字来调用另外一个方法，如果没有使用的话，编译器会自动帮我们加上。
+
+在源代码中，`method2()` 在调用 `method1()` 的时候并没有使用 this 关键字，但通过反编译后的字节码可以看得到。
+
+
+
+### 03、调用当前类的构造方法
+
+“再来看下面这段代码。”
+
+```java
+public class InvokeConstrutor {
+    InvokeConstrutor() {
+        System.out.println("hello");
+    }
+
+    InvokeConstrutor(int count) {
+        this();
+        System.out.println(count);
+    }
+
+    public static void main(String[] args) {
+        InvokeConstrutor invokeConstrutor = new InvokeConstrutor(10);
+    }
+}
+```
+
+
+
+在有参构造方法 `InvokeConstrutor(int count)` 中，使用了 `this()` 来调用无参构造方法 `InvokeConstrutor()`。
+
+`this()` 可用于调用当前类的构造方法——构造方法可以重用了。
+
+来看一下输出结果。
+
+```
+hello
+10
+```
+
+此时,无参构造方法也被调用了，所以程序输出了 hello。
+
+也可以在无参构造方法中使用 `this()` 并传递参数来调用有参构造方法。
+
+```JAVA
+public class InvokeParamConstrutor {
+    InvokeParamConstrutor() {
+        this(10);
+        System.out.println("hello");
+    }
+
+    InvokeParamConstrutor(int count) {
+        System.out.println(count);
+    }
+
+    public static void main(String[] args) {
+        InvokeParamConstrutor invokeConstrutor = new InvokeParamConstrutor();
+    }
+}
+```
+
+“再来看一下程序的输出结果。”
+
+```java
+10
+hello
+```
+
+不过，需要注意的是，`this()` 必须放在构造方法的第一行，否则就报错了。
+
+<img src="../assets/javaAssets/11.thisAndSuper.png" width="75%" style="display: block; margin: 0 auto;">
+
+在 Java 的构造函数中，如果你想调用同一个类的另一个构造函数（使用 `this()`），**它必须放在构造函数体内的第一行代码**。
+
+这是一个关于**“初始化顺序”**的严谨设计。
+
+1. **确保完整性**：构造函数的主要职责是“初始化对象”。Java 认为，如果你要调用另一个构造函数来帮忙初始化，那么这个“帮忙”的动作必须最先发生。
+2. **避免状态矛盾**：如果在调用 `this(10)` 之前你先执行了一些逻辑（比如修改了某个成员变量），而 `this(10)` 内部又重新初始化了那个变量，那么之前的操作就会被覆盖，导致程序逻辑混乱。
+3. **父类优先**：不仅是 `this()`，如果你调用父类的构造函数 `super()`，它也必须在第一行。这是为了保证在子类做任何事之前，父类已经稳稳地初始化好了。
+
+
+
+### 04、作为参数在方法中传递
+
+来看下面这段代码。
+
+```java
+public class ThisAsParam {
+    void method1(ThisAsParam p) {
+        System.out.println(p);
+    }
+
+    void method2() {
+        method1(this);
+    }
+
+    public static void main(String[] args) {
+        ThisAsParam thisAsParam = new ThisAsParam();
+        System.out.println(thisAsParam);
+        thisAsParam.method2();
+    }
+}
+```
+
+`this` 关键字可以作为参数在方法中传递，此时，它指向的是当前类的对象。
+
+```java
+com.itwanger.twentyseven.ThisAsParam@77459877
+com.itwanger.twentyseven.ThisAsParam@77459877
+```
+
+“`method2()` 调用了 `method1()`，并传递了参数 this，`method1()` 中打印了当前对象的字符串。 `main()` 方法中打印了 `thisAsParam` 对象的字符串。从输出结果中可以看得出来，两者是同一个对象。”
+
+
+
+### 05、作为参数在构造方法中传递
+
+继续来看代码
+
+```
+public class ThisAsConstrutorParam {
+    int count = 10;
+
+    ThisAsConstrutorParam() {
+        Data data = new Data(this);
+        data.out();
+    }
+
+    public static void main(String[] args) {
+        new ThisAsConstrutorParam();
+    }
+}
+
+class Data {
+    ThisAsConstrutorParam param;
+    Data(ThisAsConstrutorParam param) {
+        this.param = param;
+    }
+
+    void out() {
+        System.out.println(param.count);
+    }
+}
+```
+
+在构造方法 `ThisAsConstrutorParam()` 中，我们使用 this 关键字作为参数传递给了 Data 对象，它其实指向的就是 `new ThisAsConstrutorParam()` 这个对象。
+
+`this` 关键字也可以作为参数在构造方法中传递，它指向的是当前类的对象。当我们需要在多个类中使用一个对象的时候，这非常有用。
+
+```
+10
+```
+
+
+
+### 06、作为方法的返回值
+
+继续看代码
+
+```java
+public class ThisAsMethodResult {
+    ThisAsMethodResult getThisAsMethodResult() {
+        return this;
+    }
+    
+    void out() {
+        System.out.println("hello");
+    }
+
+    public static void main(String[] args) {
+        new ThisAsMethodResult().getThisAsMethodResult().out();
+    }
+}
+```
+
+“`getThisAsMethodResult()` 方法返回了 this 关键字，指向的就是 `new ThisAsMethodResult()` 这个对象，所以可以紧接着调用 `out()` 方法——达到了链式调用的目的，这也是 this 关键字非常经典的一种用法。”
+
+链式调用的形式在 JavaScript 和Flutter代码更加常见。
+
+对于 `getThisAsMethodResult()` 方法的返回值,需要注意的是，`this` 关键字作为方法的返回值的时候，方法的返回类型为类的类型。
+
+例如:
+
+```java
+//如果没有链式调用：
+
+thisCallFunction t = new thisCallFunction();
+t.setAge(10);
+t.setName("Neil");
+t.save();
+```
+
+如果有链式调用（通过 return this）：
+
+```java
+new thisCallFunction().setAge(10).setName("Neil").save();
+```
+
+
+
+### 07、super 关键字
+
+super 关键字的用法主要有三种:
+
+- 指向父类对象；
+- 调用父类的方法；
+- `super()` 可以调用父类的构造方法。
+
+“其实和 this 有些相似，只不过用意不大相同。”我端起水瓶，咕咚咕咚又喝了几大口，好渴。“每当创建一个子类对象的时候，也会隐式的创建父类对象，由 super 关键字引用。”
+
+“如果父类和子类拥有同样名称的字段，super 关键字可以用来访问父类的同名字段。”
+
+“来看下面这段代码。”
+
+```java
+public class ReferParentField {
+    public static void main(String[] args) {
+        new Dog().printColor();
+    }
+}
+
+class Animal {
+    String color = "白色";
+}
+
+class Dog extends Animal {
+    String color = "黑色";
+
+    void printColor() {
+        System.out.println(color);
+        System.out.println(super.color);
+    }
+}
+```
+
+父类 Animal 中有一个名为 color 的字段，子类 Dog 中也有一个名为 color 的字段，子类的 `printColor()` 方法中，通过 super 关键字可以访问父类的 color。
+
+“来看一下输出结果。”
+
+```java
+黑色
+白色
+```
+
+当子类和父类的方法名相同时，可以使用 super 关键字来调用父类的方法。换句话说，super 关键字可以用于方法重写时访问到父类的方法。
+
+```java
+public class ReferParentMethod {
+    public static void main(String[] args) {
+        new Dog().work();
+    }
+}
+
+class Animal {
+    void eat() {
+        System.out.println("吃...");
+    }
+}
+
+class Dog extends Animal {
+    @Override
+    void eat() {
+        System.out.println("吃...");
+    }
+
+    void bark() {
+        System.out.println("汪汪汪...");
+    }
+
+    void work() {
+        super.eat();
+        bark();
+    }
+}
+```
+
+父类 Animal 和子类 Dog 中都有一个名为 `eat()` 的方法，通过 `super.eat()` 可以访问到父类的 `eat()` 方法。
+
+
+
+而另一个案例:
+
+```java
+public class ReferParentConstructor {
+    public static void main(String[] args) {
+        new Dog();
+    }
+}
+
+class Animal {
+    Animal(){
+        System.out.println("动物来了");
+    }
+}
+
+class Dog extends Animal {
+    Dog() {
+        super();
+        System.out.println("狗狗来了");
+    }
+}
+```
+
+子类 Dog 的构造方法中，第一行代码为 `super()`，它就是用来调用父类的构造方法的。
+
+来看一下输出结果。
+
+```
+动物来了
+狗狗来了
+```
+
+当然了，在默认情况下，`super()` 是可以省略的，编译器会主动去调用父类的构造方法。也就是说，子类即使不使用 `super()` 主动调用父类的构造方法，父类的构造方法仍然会先执行。
+
+```java
+public class ReferParentConstructor {
+    public static void main(String[] args) {
+        new Dog();
+    }
+}
+
+class Animal {
+    Animal(){
+        System.out.println("动物来了");
+    }
+}
+
+class Dog extends Animal {
+    Dog() {
+        System.out.println("狗狗来了");
+    }
+}
+```
+
+```
+动物来了
+狗狗来了
+```
+
+输出结果和之前一样。
+
+`super()` 也可以用来调用父类的有参构造方法，这样可以提高代码的可重用性。
+
+```java
+class Person {
+    int id;
+    String name;
+
+    Person(int id, String name) {
+        this.id = id;
+        this.name = name;
+    }
+}
+
+class Emp extends Person {
+    float salary;
+
+    Emp(int id, String name, float salary) {
+        super(id, name);
+        this.salary = salary;
+    }
+
+    void display() {
+        System.out.println(id + " " + name + " " + salary);
+    }
+}
+
+public class CallParentParamConstrutor {
+    public static void main(String[] args) {
+        new Emp(1, "沉默王二", 20000f).display();
+    }
+}
+```
+
+“Emp 类继承了 Person 类，也就继承了 id 和 name 字段，当在 Emp 中新增了 salary 字段后，构造方法中就可以使用 `super(id, name)` 来调用父类的有参构造方法。
+
+```
+1 沉默王二 20000.0
+```
+
+
+
+## static 关键字
+
+static 是 Java 中比较难以理解的一个关键字，也是各大公司的面试官最喜欢问到的一个知识点之一
+
+static 关键字的作用可以用一句话来描述：‘**方便在没有创建对象的情况下进行调用**，包括变量和方法’。也就是说，只要类被加载了，就可以通过类名进行访问。
+
+static 可以用来修饰类的成员变量，以及成员方法。我们一个个来看。
+
+
+
+### 01、静态变量
+
+“如果在声明变量的时候使用了 static 关键字，那么这个变量就被称为静态变量。静态变量只在类加载的时候获取一次内存空间，这使得静态变量很节省内存空间。”家里的暖气有点足，我跑去开了一点窗户后继续说道。
+
+“来考虑这样一个 Student 类。”话音刚落，我就在键盘上噼里啪啦一阵敲。
+
+```java
+public class Student {
+    String name;
+    int age;
+    String school = "交通大学";
+}
+```
+
+假设交通大学录取了一万名新生，那么在创建一万个 Student 对象的时候，所有的字段（name、age 和 school）都会获取到一块内存。学生的姓名和年纪不尽相同，但都属于交通大学，如果每创建一个对象，school 这个字段都要占用一块内存的话，就很浪费.
+
+因此，最好将 school 这个字段设置为 static，这样就只会占用一块内存，而不是一万块。
+
+```java
+public class Student {
+    String name;
+    int age;
+    static String school = "交通大学";
+
+    public Student(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public static void main(String[] args) {
+        Student s1 = new Student("neil", 18);
+        Student s2 = new Student("neil", 16);
+    }
+}
+```
+
+此时s1 和 s2 这两个引用变量存放在栈区（stack），neil+18 这个对象和neil+16 这个对象存放在堆区（heap），school 这个静态变量存放在静态区。
+
+![11.static](../assets/javaAssets/11.static.png)
+
+
+
+这下关系就一目了然了,然后来看另一个案例:
+
+```java
+public class Counter {
+    int count = 0;
+
+    Counter() {
+        count++;
+        System.out.println(count);
+    }
+
+    public static void main(String args[]) {
+        Counter c1 = new Counter();
+        Counter c2 = new Counter();
+        Counter c3 = new Counter();
+    }
+}
+```
+
+创建一个成员变量 count，并且在构造函数中让它自增。因为成员变量会在创建对象的时候获取内存，因此每一个对象都会有一个 count 的副本， count 的值并不会随着对象的增多而递增。
+
+```
+1
+1
+1
+```
+
+每创建一个 Counter 对象，count 的值就从 0 自增到 1。但是，想一下，如果 count 是静态的呢
+
+```java
+public class StaticCounter {
+    static int count = 0;
+
+    StaticCounter() {
+        count++;
+        System.out.println(count);
+    }
+
+    public static void main(String args[]) {
+        StaticCounter c1 = new StaticCounter();
+        StaticCounter c2 = new StaticCounter();
+        StaticCounter c3 = new StaticCounter();
+    }
+}
+```
+
+结果是:
+
+```
+1
+2
+3
+```
+
+简单解释一下哈，由于静态变量只会获取一次内存空间，所以任何对象对它的修改都会得到保留，所以每创建一个对象，count 的值就会加 1，所以最终的结果是 3，这就是静态变量和成员变量之间的差别。
+
+另外，需要注意的是，由于静态变量属于一个类，所以不要通过对象引用来访问，而应该直接通过类名来访问，否则编译器会发出警告。
+
+对于 `c1.count`,较高版本的IDE不会报错原因是:在底层会自动帮你把 `sc1.count` 翻译成 `StaticCount.count`。
+
+
+
+### 02、静态方法
+
+如果方法上加了 static 关键字，那么它就是一个静态方法。
+
+静态方法有以下这些特征:
+
+- 静态方法属于这个类而不是这个类的对象；
+- 调用静态方法的时候不需要创建这个类的对象；
+- 静态方法可以访问静态变量。
+
+
+
+```java
+public class StaticMethodStudent {
+    String name;
+    int age;
+    static String school = "郑州大学";
+
+    public StaticMethodStudent(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+    
+    static void change() {
+        school = "河南大学";
+    }
+    
+    void out() {
+        System.out.println(name + " " + age + " " + school);
+    }
+
+    public static void main(String[] args) {
+        StaticMethodStudent.change();
+        
+        StaticMethodStudent s1 = new StaticMethodStudent("沉默王二", 18);
+        StaticMethodStudent s2 = new StaticMethodStudent("沉默王三", 16);
+        
+        s1.out();
+        s2.out();
+    }
+}
+```
+
+`change()` 方法就是一个静态方法，所以它可以直接访问静态变量 school，把它的值更改为河南大学；并且，可以通过类名直接调用 `change()` 方法，就像 `StaticMethodStudent.change()` 这样。
+
+需要注意的是，静态方法不能访问非静态变量和调用非静态方法
+
+先是在静态方法中访问非静态变量，编译器不允许:
+
+<img src="../assets/javaAssets/11.static2.png" width="75%" style="display: block; margin: 0 auto;">
+
+然后在静态方法中访问非静态方法，编译器同样不允许:
+
+<img src="../assets/javaAssets/11.static3.png" width="75%" style="display: block; margin: 0 auto;">
+
+
+
+同时还有一个重量级的问题,为什么 main 方法是静态的?
+
+
+
+### 03、为什么main是静态
+
+如果 main 方法不是静态的，就意味着 Java 虚拟机在执行的时候需要先创建一个对象才能调用 main 方法，而 main 方法作为程序的入口，创建一个额外的对象显得非常多余。
+
+
+
+### 04、静态代码块
+
+除了静态变量和静态方法，static 关键字还有一个重要的作用:
+
+用一个 static 关键字，外加一个大括号括起来的代码被称为静态代码块。
+
+就像下面这串代码:
+
+```java
+public class StaticBlock {
+    static {
+        System.out.println("静态代码块");
+    }
+
+    public static void main(String[] args) {
+        System.out.println("main 方法");
+    }
+}
+```
+
+静态代码块通常用来初始化一些静态变量，它会优先于 `main()` 方法执行。
+
+```
+静态代码块
+main 方法
+```
+
+
+
+既然静态代码块先于 `main()` 方法执行，那没有 `main()` 方法的 Java 类能执行成功吗？
+
+Java 1.6 是可以的，但 Java 7 开始就无法执行了。
+
+```java
+public class StaticBlockNoMain {
+    static {
+        System.out.println("静态代码块，没有 main");
+    }
+}
+```
+
+在命令行中执行 `java StaticBlockNoMain` 的时候，会抛出 NoClassDefFoundError 的错误。”
+
+<img src="../assets/javaAssets/11.static4.png" width="75%" style="display: block; margin: 0 auto;">
+
+
+
+然后来看下一个例子:
+
+```java
+public class StaticBlockDemo {
+    public static List<String> writes = new ArrayList<>();
+
+    static {
+        writes.add("沉默王二");
+        writes.add("沉默王三");
+        writes.add("沉默王四");
+
+        System.out.println("第一块");
+    }
+
+    static {
+        writes.add("沉默王五");
+        writes.add("沉默王六");
+
+        System.out.println("第二块");
+    }
+}
+```
+
+writes 是一个静态的 ArrayList，所以不太可能在声明的时候完成初始化，因此需要在静态代码块中完成初始化。
+
+静态代码块在初始集合的时候，真的非常有用。在实际的项目开发中，通常使用静态代码块来加载配置文件到内存当中。
+
+
+
+### 05、静态内部类
+
+除了以上只写，static 还有一个不太常用的功能——静态内部类。Java 允许我们在一个类中声明一个内部类，它提供了一种令人信服的方式，允许我们只在一个地方使用一些变量，使代码更具有条理性和可读性。
+
+常见的内部类有四种，成员内部类、局部内部类、匿名内部类和静态内部类，我们在Java内部类有过讨论,但static比较简短,在这里重点说明一下。
+
+来看下面这个例子:
+
+```java
+public class Singleton {
+    private Singleton() {}
+
+    private static class SingletonHolder {
+        public static final Singleton instance = new Singleton();
+    }
+
+    public static Singleton getInstance() {
+        return SingletonHolder.instance;
+    }
+}
+```
+
+这段代码在以后创建单例的时候还会见到
+
+第一次加载 Singleton 类时并不会初始化 instance，只有第一次调用 `getInstance()` 方法时 Java 虚拟机才开始加载 SingletonHolder 并初始化 instance，这样不仅能确保线程安全，也能保证 Singleton 类的唯一性。不过，创建单例更优雅的一种方式是使用枚举，未来我们也会讲到.
+
+
+
+**1.什么意思呢?详细来说就是:**
+
+利用了 Java 类加载机制的特性，实现了“完美”的延迟加载和线程安全，且没有任何性能锁的开销。
+
+在 Java 中，**类的加载是按需进行的**。
+
+- 当你第一次访问 `Singleton` 类时（比如调用了 `Singleton.someOtherStaticMethod()`），JVM 会加载 `Singleton`。
+- 但是，**静态内部类 `SingletonHolder` 此时并不会被加载**。因为它是一个独立的实体，只有当代码运行到 `SingletonHolder.instance` 这行代码时，JVM 才会发现：“哦，我需要用到这个内部类了”，这时才会去加载它。
+
+
+
+**2.那么为什么会说是安全的呢?**
+
+这是很多初学者最困惑的地方：代码里明明没有 `synchronized`（同步锁），万一两个线程同时调用 `getInstance()`，不会造出两个对象吗？
+
+**答案是：JVM 替你扛下了所有。**
+
+- 根据 Java 虚拟机规范，**类的初始化过程是线程安全的**。
+- 当一个类被加载时，JVM 会获取一个锁，确保只有一个线程能执行该类的初始化代码（包括静态变量的赋值）。
+- 因此，`instance = new Singleton();` 这行代码在 JVM 级别是被保护的。即便一百个线程同时冲进来，JVM 也会保证只有一个线程在创建对象，其他线程会等待初始化完成并直接获取结果。
+
+
+
+
+
+需要注意的是。第一，静态内部类不能访问外部类的所有成员变量；第二，静态内部类可以访问外部类的所有静态变量，包括私有静态变量。第三，外部类不能声明为 static。
+
+
+
+## final 关键字
+
+### 01、final 变量
+
+被 final 修饰的变量无法重新赋值。换句话说，final 变量一旦初始化，就无法更改。
+
+```java
+final int age = 18;
+```
+
+
+
+如果想修改,IDE则不允许:
+
+![12.finalKey](../assets/javaAssets/12.finalKey.png)
+
+```java
+public class Pig {
+   private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+
+这是一个很普通的 Java 类，它有一个字段 name。
+
+然后，我们创建一个测试类，并声明一个 final 修饰的 Pig 对象。
+
+```java
+final Pig pig = new Pig();
+```
+
+如果尝试将 pig 重新赋值的话，编译器同样会生气。
+
+![12.finalKey2](../assets/javaAssets/12.finalKey2.png)
+
+但我们仍然可以去修改 pig 对象的 name。
+
+```java
+final Pig pig = new Pig();
+pig.setName("特立独行");
+System.out.println(pig.getName()); // 特立独行
+```
+
+另外，final 修饰的成员变量必须有一个默认值，否则编译器将会提醒没有初始化。
+
+![12.finalKey2](../assets/javaAssets/12.finalKey3.png)
+
+“final 和 static 一起修饰的成员变量叫做常量，常量名必须全部大写。”
+
+```java
+public class Pig {
+   private final int age = 1;
+   public static final double PRICE = 36.5;
+}
+```
+
+有时候，我们还会用 final 关键字来修饰参数，它意味着参数在方法体内不能被再修改。
+
+来看下面这段代码。
+
+```java
+public class ArgFinalTest {
+    public void arg(final int age) {
+    }
+
+    public void arg1(final String name) {
+    }
+}
+```
+
+如果尝试去修改它的话，编译器会提示以下错误。
+
+![12.finalKey2](../assets/javaAssets/12.finalKey4.png)
+
+
+
+### 02、final 方法
+
+“被 final 修饰的方法不能被重写。如果我们在设计一个类的时候，认为某些方法不应该被重写，就应该把它设计成 final 的。”
+
+“Thread 类就是一个例子，它本身不是 final 的，这意味着我们可以扩展它，但它的 `isAlive()` 方法是 final 的。”
+
+```java
+public class Thread implements Runnable {
+    public final native boolean isAlive();
+}
+```
+
+“需要注意的是，该方法是一个本地（native）方法，用于确认线程是否处于活跃状态。而本地方法是由操作系统决定的，因此重写该方法并不容易实现。”
+
+“来看这段代码。”
+
+```java
+public class Actor {
+    public final void show() {
+
+    }
+}
+```
+
+“当我们想要重写该方法的话，就会出现编译错误。”
+
+![12.finalKey5](../assets/javaAssets/12.finalKey5.png)
+
+一个类是 final 的，和一个类不是 final，但它所有的方法都是 final 的，考虑一下，它们之间有什么区别？
+
+“直接可以想到的第一感觉就是，就是前者不能被[继承](https://javabetter.cn/oo/extends-bigsai.html)，也就是说方法无法被重写；后者呢，可以被继承，然后追加一些非 final 的方法。”
+
+
+
+### 03、final 类
+
+如果一个类使用了 final 关键字修饰，那么它就无法被继承,例如String就是一个案例
+
+```java
+public final class String
+    implements java.io.Serializable, Comparable<String>, CharSequence,
+               Constable, ConstantDesc {}
+```
+
+为什么 String 类要设计成 final ?
+
+原因大致有 3 个:
+
+- 为了实现字符串常量池
+- 为了线程安全
+- 为了 HashCode 的不可变性
+
+详见 Java基础 -> 2.3数组和字符串 -> 5.为什么字符串是不可变的
+
+任何尝试从 final 类继承的行为将会引发编译错误。来看这段代码:
+
+```java
+public final class Writer {
+    private String name;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+}
+```
+
+尝试去继承它，编译器会提示以下错误，Writer 类是 final 的，无法继承。
+
+![12.finalKey6](../assets/javaAssets/12.finalKey6.png)
+
+不过，类是 final 的，并不意味着该类的对象是不可变的。
+
+来看这段代码:
+
+```java
+Writer writer = new Writer();
+writer.setName("沉默王二");
+System.out.println(writer.getName()); // 沉默王二
+```
+
+Writer 的 name 字段的默认值是 null，但可以通过 settter 方法将其更改为沉默王二。也就是说，如果一个类只是 final 的，那么它并不是不可变的全部条件。
+
+
+
+关于不可变类详细会在后面讨论
+
+
+
+总之把一个类设计成 final 的，有其安全方面的考虑，但不应该故意为之，因为把一个类定义成 final 的，意味着它没办法继承，假如这个类的一些方法存在一些问题的话，我们就无法通过重写的方式去修复它。
+
+
+
+## `instanceof`关键字
+
+`instanceof` 关键字的用法其实很简单：
+
+```java
+(object) instanceof (type)
+```
+
+用意也非常简单，判断对象是否符合指定的类型，结果要么是 true，要么是 false。在[反序列化](https://javabetter.cn/io/serialize.html)的时候，`instanceof` 操作符还是蛮常用的，因为这时候我们不太确定对象属不属于指定的类型，如果不进行判断的话，就容易抛出 `ClassCastException` 异常。
+
+我们来建这样一个简单的类 Round：
+
+```java
+class Round {
+}
+```
+
+然后新增一个扩展类 Ring：
+
+```java
+class Ring extends Round {
+}
+```
+
+这时候，我们就可以通过 `instanceof` 来检查 Ring 对象是否属于 Round 类型。
+
+```java
+Ring ring = new Ring();
+System.out.println(ring instanceof Round);
+```
+
+结果会输出 true，因为 Ring 继承了 Round，也就意味着 Ring 和 Round 符合 `is-a` 的关系，而 instanceof 操作符正是基于类与类之间的继承关系，以及类与接口之间的实现关系的。
+
+我们再来新建一个接口 Shape：
+
+```java
+interface Shape {
+}
+```
+
+然后新建 Circle 类实现 Shape 接口并继承 Round 类：
+
+```
+class Circle extends Round implements Shape {
+}
+```
+
+如果对象是由该类创建的，那么 instanceof 的结果肯定为 true。
+
+```java
+Circle circle = new Circle();
+System.out.println(circle instanceof Circle);
+```
+
+这个肯定没毛病，`instanceof` 就是干这个活的，大家也很好理解。那如果类型是父类呢？
+
+```java
+System.out.println(circle instanceof Round);
+```
+
+结果肯定还是 true，因为依然符合 `is-a` 的关系。那如果类型为接口呢？
+
+```java
+System.out.println(circle instanceof Shape);
+```
+
+结果仍然为 true， 因为也符合 `is-a` 的关系。如果要比较的对象和要比较的类型之间没有关系，当然是不能使用 instanceof 进行比较的。
+
+为了验证这一点，我们来创建一个实现了 Shape 但与 Circle 无关的 Triangle 类：
+
+```java
+class Triangle implements Shape {
+}
+```
+
+这时候，再使用 instanceof 进行比较的话，编译器就报错了。
+
+```java
+System.out.println(circle instanceof Triangle);
+```
+
+```java
+Inconvertible types; cannot cast 'com.itwanger.twentyfour.instanceof1.Circle' to 'com.itwanger.twentyfour.instanceof1.Triangle'
+```
+
+意思就是类型不匹配，不能转换，我们使用 `instanceof` 比较的目的，也就是希望如果结果为 true 的时候能进行类型转换。但显然 Circle 不能转为 Triangle。
+
+Java 是一门面向对象的编程语言，也就意味着除了基本数据类型，所有的类都会隐式继承 Object 类。所以下面的结果肯定也会输出 true。
+
+```java
+Thread thread = new Thread();
+System.out.println(thread instanceof Object);
+```
+
+那如果对象为 null 呢？
+
+```java
+System.out.println(null instanceof Object);
+```
+
+只有对象才会有 null 值，所以编译器是不会报错的，只不过，对于 null 来说，`instanceof` 的结果为 false。因为所有的对象都可以为 null，所以也不好确定 null 到底属于哪一个类。
+
+通常，我们是这样使用 `instanceof` 操作符的。
+
+```java
+// 先判断类型
+if (obj instanceof String) {
+    // 然后强制转换
+    String s = (String) obj;
+    // 然后才能使用
+}
+```
+
+先用 `instanceof` 进行类型判断，然后再把 `obj` 强制转换成我们期望的类型再进行使用。
+
+JDK 16 的时候，`instanceof` 模式匹配转了正，意味着使用 `instanceof` 的时候更便捷了。
+
+```java
+if (obj instanceof String s) {
+    // 如果类型匹配 直接使用 s
+}
+```
+
+可以直接在 if 条件判断类型的时候添加一个变量，就不需要再强转和声明新的变量了。
 
