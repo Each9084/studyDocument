@@ -2777,3 +2777,1621 @@ if (obj instanceof String s) {
 
 可以直接在 if 条件判断类型的时候添加一个变量，就不需要再强转和声明新的变量了。
 
+
+
+## 不可变对象
+
+我们接着前面String是immutable 类（不可变对象）来讨论
+
+
+
+### 01、什么是不可变类
+
+一个类的对象在通过构造方法创建后如果状态不会再被改变，那么它就是一个不可变（immutable）类。它的所有成员变量的赋值仅在构造方法中完成，不会提供任何 setter 方法供外部类去修改。
+
+自从有了多线程，生产力就被无限地放大了，所有的程序员都爱它，因为强大的硬件能力被充分地利用了。但与此同时，所有的程序员都对它心生忌惮，因为一不小心，多线程就会把对象的状态变得混乱不堪。
+
+为了保护状态的原子性、可见性、有序性，我们程序员可以说是竭尽所能。其中，synchronized（同步）关键字是最简单最入门的一种解决方案。
+
+假如说类是不可变的，那么对象的状态就也是不可变的。这样的话，每次修改对象的状态，就会产生一个新的对象供不同的线程使用，我们程序员就不必再担心并发问题了。
+
+
+
+### 02、常见的不可变类
+
+提到不可变类，几乎所有的程序员第一个想到的，就是 String 类。那为什么 String 类要被设计成不可变的呢？
+
+#### 1）常量池的需要
+
+[字符串常量池](https://javabetter.cn/string/constant-pool.html)是 Java 堆内存中一个特殊的存储区域，当创建一个 String 对象时，假如此字符串在常量池中不存在，那么就创建一个；假如已经存，就不会再创建了，而是直接引用已经存在的对象。这样做能够减少 JVM 的内存开销，提高效率。
+
+
+
+#### 2）hashCode 需要
+
+因为字符串是不可变的，所以在它创建的时候，其 hashCode 就被缓存了，因此非常适合作为哈希值（比如说作为 [HashMap](https://javabetter.cn/collection/hashmap.html) 的键），多次调用只返回同一个值，来提高效率。
+
+
+
+#### 3）线程安全
+
+就像之前说的那样，如果对象的状态是可变的，那么在多线程环境下，就很容易造成不可预期的结果。而 String 是不可变的，就可以在多个线程之间共享，不需要同步处理。
+
+因此，当我们调用 String 类的任何方法（比如说 `trim()`、`substring()`、`toLowerCase()`）时，总会返回一个新的对象，而不影响之前的值。
+
+```java
+String cmower = "沉默王二，一枚有趣的程序员";
+cmower.substring(0,4);
+System.out.println(cmower);// 沉默王二，一枚有趣的程序员
+```
+
+虽然调用 `substring()` 方法对 cmower 进行了截取，但 cmower 的值没有改变。
+
+除了 String 类，包装器类 Integer、Long 等也是不可变类。
+
+
+
+但是要注意一点
+
+<span style="color:red">你可能会疑惑：“如果 `Integer` 不可变，为什么我能写 `i++` 呢？”</span>
+
+```java
+Integer i = 10;
+i++; // 看起来 i 变了
+```
+
+**真相是：** 这里的 `i++` 实际上是一个“偷梁换柱”的过程（拆箱再装箱）：
+
+1. 取出 `i` 里的基本类型值 `10`（Unboxing）。
+2. 进行加法运算得到 `11`。
+3. **创建一个全新的 `Integer` 对象**，其值为 `11`（Autoboxing）。
+4. 将变量 `i` 指向这个**新的对象**。
+
+**旧的那个值为 10 的对象依然在那里，一动不动，直到被垃圾回收。**
+
+
+
+
+
+
+
+### 03、手撸一个不可变类
+
+看懂一个不可变类也许容易，但要创建一个自定义的不可变类恐怕就有点难了。但知难而进是我们作为一名优秀的程序员不可或缺的品质，正因为不容易，我们才能真正地掌握它。
+
+接下来，就请和我一起，来自定义一个不可变类吧。一个不可变类，必须要满足以下 4 个条件：
+
+**1）确保类是 final 的**，不允许被其他类继承*。
+
+**2）确保所有的成员变量（字段）是 final 的**，这样的话，它们就只能在构造方法中初始化值，并且不会在随后被修改。
+
+**3）不要提供任何 setter 方法**。
+
+**4）如果要修改类的状态，必须返回一个新的对象**。
+
+按照以上条件，我们来自定义一个简单的不可变类 Writer。
+
+```java
+public final class Writer {
+    private final String name;
+    private final int age;
+
+    public Writer(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public String getName() {
+        return name;
+    }
+}
+```
+
+
+
+Writer 类是 final 的，name 和 age 也是 final 的，没有 setter 方法。
+
+OK，据说这个作者分享了很多博客，广受读者的喜爱，因此某某出版社找他写了一本书（Book）。Book 类是这样定义的：
+
+```java
+public class Book {
+    private String name;
+    private int price;
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getPrice() {
+        return price;
+    }
+
+    public void setPrice(int price) {
+        this.price = price;
+    }
+
+    @Override
+    public String toString() {
+        return "Book{" +
+                "name='" + name + '\'' +
+                ", price=" + price +
+                '}';
+    }
+}
+```
+
+2 个字段，分别是 name 和 price，以及 getter 和 setter，重写后的 `toString()` 方法。然后，在 Writer 类中追加一个可变对象字段 book。
+
+
+
+```java
+public final class Writer {
+    private final String name;
+    private final int age;
+    private final Book book;
+
+    public Writer(String name, int age, Book book) {
+        this.name = name;
+        this.age = age;
+        this.book = book;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Book getBook() {
+        return book;
+    }
+}
+```
+
+并在构造方法中追加了 Book 参数，以及 Book 的 getter 方法。
+
+完成以上工作后，我们来新建一个测试类，看看 Writer 类的状态是否真的不可变。
+
+```java
+public class WriterDemo {
+    public static void main(String[] args) {
+        Book DonQuixote = new Book();
+        DonQuixote.setName("堂吉诃德");
+        DonQuixote.setPrice(79);
+
+        Writer writer = new Writer("塞万提斯",40,DonQuixote);
+        System.out.println("price is :"+writer.getBook());
+
+        writer.getBook().setPrice(59);
+        System.out.println("The promotional price is : " + writer.getBook());
+    }
+}
+
+```
+
+程序输出的结果如下所示：
+
+```java
+price is :Book{name='堂吉诃德', price=79}
+The promotional price is : Book{name='堂吉诃德', price=59}
+```
+
+糟糕，Writer 类的不可变性被破坏了，价格发生了变化。为了解决这个问题，我们需要为不可变类的定义规则追加一条内容：
+
+如果一个不可变类中包含了可变类的对象，那么就需要确保返回的是可变对象的副本。也就是说，Writer 类中的 `getBook()` 方法应该修改为：
+
+```java
+public Book getBook() {
+    Book clone = new Book();
+    clone.setPrice(this.book.getPrice());
+    clone.setName(this.book.getName());
+    return clone;
+}
+```
+
+这样的话，构造方法初始化后的 Book 对象就不会再被修改了。此时，运行 WriterDemo，就会发现价格不再发生变化了。
+
+```java
+定价：Book{name='二哥的 Java 进阶之路', price=79}
+促销价：Book{name='二哥的 Java 进阶之路', price=79}
+```
+
+
+
+### 04、总结
+
+ 不可变类有很多优点，就像之前提到的 String 类那样，尤其是在多线程环境下，它非常的安全。尽管每次修改都会创建一个新的对象，增加了内存的消耗，但这个缺点相比它带来的优点，显然是微不足道的——无非就是捡了西瓜，丢了芝麻。
+
+
+
+
+
+
+
+## 方法重写和方法重载的区别
+
+方法重写  
+
+方法重载
+
+如果一个类有多个名字相同但参数个数不同的方法，我们通常称这些方法为**方法重载(Override)**。 ”我面带着朴实无华的微笑继续说，“如果方法的功能是一样的，但参数不同，使用相同的名字可以提高程序的可读性。
+
+如果子类具有和父类一样的方法（参数相同、返回类型相同、方法名相同，但方法体可能不同），我们称之为**方法重写(Overload)**。 方法重写用于提供父类已经声明的方法的特殊实现，是实现多态的基础条件。
+
+
+
+<img src="../assets/javaAssets/13.overLoadAndRide.png" width="35%" style="display: block; margin: 0 auto;">
+
+
+
+### 01、方法重载
+
+“在 Java 中，有两种方式可以达到方法重载的目的。”
+
+“第一，改变参数的数目。来看下面这段代码。”
+
+```java
+public class OverloadingByParamNum {
+    public static void main(String[] args) {
+        System.out.println(Adder.add(10, 19));
+        System.out.println(Adder.add(10, 19, 20));
+    }
+}
+
+class Adder {
+    static int add(int a, int b) {
+        return a + b;
+    }
+
+    static int add(int a, int b, int c) {
+        return a + b + c;
+    }
+}
+```
+
+“Adder 类有两个方法，第一个 `add()` 方法有两个参数，在调用的时候可以传递两个参数；第二个 `add()` 方法有三个参数，在调用的时候可以传递三个参数。”
+
+但你可能觉得会有一些啰嗦,如果未来还有各种各样的需求相加,那么岂不是要一直写,针对这个问题,我们之前有讨论过:
+
+如果参数类型相同的话,Java 提供了可变参数的方式
+
+```java
+static int add(int ... args) {
+    int sum = 0;
+    for ( int a: args) {
+        sum += a;
+    }
+    return sum;
+}
+```
+
+第二，通过改变参数类型，也可以达到方法重载的目的。来看下面这段代码:
+
+```java 
+public class OverloadingByParamType {
+    public static void main(String[] args) {
+        System.out.println(Adder.add(10, 19));
+        System.out.println(Adder.add(10.1, 19.2));
+    }
+}
+
+class Adder {
+    static int add(int a, int b) {
+        return a + b;
+    }
+
+    static double add(double a, double b) {
+        return a + b;
+    }
+}
+```
+
+“Adder 类有两个方法，第一个 `add()` 方法的参数类型为 int，第二个 `add()` 方法的参数类型为 double。”
+
+有可能会问:改变参数的数目和类型都可以实现方法重载，为什么改变方法的返回值类型就不可以呢？
+
+因为仅仅改变返回值类型的话，会把编译器搞懵逼的。
+
+编译时报错优于运行时报错，所以当两个方法的名字相同，参数个数和类型也相同的时候，虽然返回值类型不同，但依然会提示方法已经被定义的错误。
+
+<img src="../assets/javaAssets/13.overLoadAndRide2.png" width="55%" style="display: block; margin: 0 auto;">
+
+我们在调用一个方法的时候，可以指定返回值类型，也可以不指定。当不指定的时候，直接指定 `add(1, 2)` 的时候，编译器就不知道该调用返回 int 的 `add()` 方法还是返回 double 的 `add()` 方法，产生了歧义。
+
+方法的返回值只是作为方法运行后的一个状态，它是保持方法的调用者和被调用者进行通信的一个纽带，但并不能作为某个方法的‘标识’。
+
+
+
+<span style="color:orange">那么与之而来的还有一个问题,Main方法可以重载吗?</span>
+
+这是个好问题,答案是肯定的，毕竟 `main()` 方法也是个方法，只不过，Java 虚拟机在运行的时候只会调用带有 String 数组的那个 `main()` 方法。
+
+```java
+public class OverloadingMain {
+    public static void main(String[] args) {
+        System.out.println("String[] args");
+    }
+
+    public static void main(String args) {
+        System.out.println("String args");
+    }
+
+    public static void main() {
+        System.out.println("无参");
+    }
+}
+```
+
+“第一个 `main()` 方法的参数形式为 `String[] args`，是最标准的写法；第二个 `main()` 方法的参数形式为 `String args`，少了中括号；第三个 `main()` 方法没有参数。”
+
+“来看一下程序的输出结果。
+
+```java
+String[] args
+```
+
+从结果中，我们可以看得出，尽管 `main()` 方法可以重载，但程序只认标准写法。
+
+由于可以通过改变参数类型的方式实现方法重载，那么当传递的参数没有找到匹配的方法时，就会发生隐式的类型转换。
+
+<img src="../assets/javaAssets/13.overLoadAndRide3.png" width="55%" style="display: block; margin: 0 auto;">
+
+如上图所示，byte 可以向上转换为 short、int、long、float 和 double，short 可以向上转换为 int、long、float 和 double，char 可以向上转换为 int、long、float 和 double，依次类推。
+
+来看下面这个案例
+
+```java
+public class OverloadingTypePromotion {
+    void sum(int a, long b) {
+        System.out.println(a + b);
+    }
+
+    void sum(int a, int b, int c) {
+        System.out.println(a + b + c);
+    }
+
+    public static void main(String args[]) {
+        OverloadingTypePromotion obj = new OverloadingTypePromotion();
+        obj.sum(20, 20);
+        obj.sum(20, 20, 20);
+    }
+}
+```
+
+执行 `obj.sum(20, 20)` 的时候，发现没有 `sum(int a, int b)` 的方法，所以此时第二个 20 向上转型为 long，所以调用的是 `sum(int a, long b)` 的方法
+
+再看一个实例:
+
+```java
+public class OverloadingTypePromotion1 {
+    void sum(int a, int b) {
+        System.out.println("int");
+    }
+
+    void sum(long a, long b) {
+        System.out.println("long");
+    }
+
+    public static void main(String args[]) {
+        OverloadingTypePromotion1 obj = new OverloadingTypePromotion1();
+        obj.sum(20, 20);
+    }
+}
+```
+
+“执行 `obj.sum(20, 20)` 的时候，发现有 `sum(int a, int b)` 的方法，所以就不会向上转型为 long。”
+
+“来看一下程序的输出结果。”
+
+```java
+int
+```
+
+“继续来看示例。”
+
+```java
+public class OverloadingTypePromotion2 {
+    void sum(long a, int b) {
+        System.out.println("long int");
+    }
+
+    void sum(int a, long b) {
+        System.out.println("int long");
+    }
+
+    public static void main(String args[]) {
+        OverloadingTypePromotion2 obj = new OverloadingTypePromotion2();
+        obj.sum(20, 20);
+    }
+}
+```
+
+当有两个方法 `sum(long a, int b)` 和 `sum(int a, long b)`，参数个数相同，参数类型相同，只不过位置不同的时候，会发生什么呢？
+
+当通过 `obj.sum(20, 20)` 来调用 sum 方法的时候，编译器会提示错误。
+
+<img src="../assets/javaAssets/13.overLoadAndRide4.png" width="55%" style="display: block; margin: 0 auto;">
+
+不明确，编译器会很为难，究竟是把第一个 20 从 int 转成 long 呢，还是把第二个 20 从 int 转成 long，智障了！所以，不能写这样让编译器左右为难的代码。
+
+
+
+
+
+### 02、方法重写
+
+在 Java 中，方法重写需要满足以下三个规则:
+
+- 重写的方法必须和父类中的方法有着相同的名字；
+- 重写的方法必须和父类中的方法有着相同的参数；
+- 必须是 is-a 的关系（继承关系）。
+
+以下面的代码为例:
+
+```java
+public class Bike extends Vehicle {
+    public static void main(String[] args) {
+        Bike bike = new Bike();
+        bike.run();
+    }
+}
+
+class Vehicle {
+    void run() {
+        System.out.println("车辆在跑");
+    }
+}
+```
+
+
+
+来看一下程序的输出结果:
+
+```
+车辆在跑
+```
+
+
+
+Bike is-a Vehicle，自行车是一种车，没错。Vehicle 类有一个 `run()` 的方法，也就是说车辆可以跑，Bike 继承了 Vehicle，也可以跑。但如果 Bike 没有重写 `run()` 方法的话，自行车就只能是‘车辆在跑’，而不是‘自行车在跑’，对吧？
+
+如果有了方法重写，一切就好办了:
+
+```java
+public class Bike extends Vehicle {
+    @Override
+    void run() {
+        System.out.println("自行车在跑");
+    }
+
+    public static void main(String[] args) {
+        Bike bike = new Bike();
+        bike.run();
+    }
+}
+
+class Vehicle {
+    void run() {
+        System.out.println("车辆在跑");
+    }
+}
+```
+
+在方法重写的时候，IDEA 会建议使用 `@Override` 注解，显式的表示这是一个重写后的方法，尽管可以缺省。
+
+来看一下输出结果:
+
+```java
+自行车在跑
+```
+
+Bike 重写了 `run()` 方法，也就意味着，Bike 可以跑出自己的风格。
+
+接下来说一下重写时应当遵守的 12 条规则，应当谨记:
+
+#### **规则①：只能重写继承过来的方法**。
+
+因为重写是在子类重新实现从父类[继承](https://javabetter.cn/oo/extends-bigsai.html)过来的方法时发生的，所以只能重写继承过来的方法，这很好理解。这就意味着，只能重写那些被 public、protected 或者 default 修饰的方法，private 修饰的方法无法被重写。
+
+Animal 类有 `move()`、`eat()` 和 `sleep()` 三个方法：
+
+```java
+public class Animal {
+    public void move() { }
+
+    protected void eat() { }
+    
+    void sleep(){ }
+}
+```
+
+Dog 类来重写这三个方法：
+
+```java
+public class Dog extends Animal {
+    public void move() { }
+
+    protected void eat() { }
+
+    void sleep(){ }
+}
+```
+
+OK，完全没有问题。但如果父类中的方法是 private 的，就行不通了。
+
+```java
+public class Animal {
+    private void move() { }
+}
+```
+
+此时，Dog 类中的 `move()` 方法就不再是一个重写方法了，因为父类的 `move()` 方法是 private 的，对子类并不可见。
+
+```java
+public class Dog extends Animal {
+    public void move() { }
+}
+```
+
+
+
+#### **规则②：final、static 的方法不能被重写**
+
+一个方法是 [final](https://javabetter.cn/oo/final.html) 的就意味着它无法被子类继承到，所以就没办法重写。
+
+```java
+public class Animal {
+    final void move() { }
+}
+```
+
+由于父类 Animal 中的 `move()` 是 final 的，所以子类在尝试重写该方法的时候就出现编译错误了！
+
+<img src="../assets/javaAssets/13.overLoadAndRide5.png" width="75%" style="display: block; margin: 0 auto;">
+
+同样的，如果一个方法是 [static](https://javabetter.cn/oo/static.html) 的，也不允许重写，因为静态方法可用于父类以及子类的所有实例。
+
+```java
+public class Animal {
+    static void move() { }
+}
+```
+
+重写的目的在于根据对象的类型不同而表现出多态，而静态方法不需要创建对象就可以使用。没有了对象，重写所需要的“对象的类型”也就没有存在的意义了。
+
+<img src="../assets/javaAssets/13.overLoadAndRide6.png" width="75%" style="display: block; margin: 0 auto;">
+
+
+
+#### **规则③：重写的方法必须有相同的参数列表**。
+
+```java
+public class Animal {
+    void eat(String food) { }
+}
+```
+
+Dog 类中的 `eat()` 方法保持了父类方法 `eat()` 的同一个调调，都有一个参数——String 类型的 food。
+
+```java
+public class Dog extends Animal {
+    public void eat(String food) { }
+}
+```
+
+一旦子类没有按照这个规则来，比如说增加了一个参数：
+
+```java
+public class Dog extends Animal {
+    public void eat(String food, int amount) { }
+}
+```
+
+这就不再是重写的范畴了，当然也不是重载的范畴，因为重载考虑的是同一个类。
+
+
+
+#### **规则④：重写的方法必须返回相同的类型**。
+
+父类没有返回类型：
+
+```java
+public class Animal {
+    void eat(String food) { }
+}
+```
+
+子类尝试返回 String：
+
+```java
+public class Dog extends Animal {
+    public String eat(String food) {
+        return null;
+    }
+}
+```
+
+于是就编译出错了（返回类型不兼容）
+
+![13.overLoadAndRide7](../assets/javaAssets/13.overLoadAndRide7.png)
+
+
+
+#### **规则⑤：重写的方法不能使用限制等级更严格的权限修饰符**。
+
+可以这样来理解：
+
+- 如果被重写的方法是 default，那么重写的方法可以是 default、protected 或者 public。
+- 如果被重写的方法是 protected，那么重写的方法只能是 protected 或者 public。
+- 如果被重写的方法是 public， 那么重写的方法就只能是 public。
+
+举个例子，父类中的方法是 protected：
+
+```java
+public class Animal {
+    protected void eat() { }
+}
+```
+
+
+
+子类中的方法可以是 public：
+
+```java
+public class Dog extends Animal {
+    public void eat() { }
+}
+```
+
+如果子类中的方法用了更严格的权限修饰符，编译器就报错了。
+
+![13.overLoadAndRide8](../assets/javaAssets/13.overLoadAndRide8.png)
+
+
+
+#### **规则⑥：重写后的方法不能抛出比父类中更高级别的异常**。
+
+举例来说，如果父类中的方法抛出的是 IOException，那么子类中重写的方法不能抛出 Exception，可以是 IOException 的子类或者不抛出任何[异常](https://javabetter.cn/exception/gailan.html)。这条规则只适用于可检查的异常。
+
+可检查（checked）异常必须在源代码中显式地进行捕获处理，不检查（unchecked）异常就是所谓的运行时异常，比如说 NullPointerException、ArrayIndexOutOfBoundsException 之类的，不会在编译器强制要求。
+
+父类抛出 IOException：
+
+```java
+public class Animal {
+    protected void eat() throws IOException { }
+}
+```
+
+子类抛出 FileNotFoundException 是可以满足重写的规则的，因为 FileNotFoundException 是 IOException 的子类。
+
+```java
+public class Dog extends Animal {
+   public void eat() throws FileNotFoundException { }
+}
+```
+
+如果子类抛出了一个新的异常，并且是一个 checked 异常：
+
+```java
+public class Dog extends Animal {
+   public void eat() throws FileNotFoundException, InterruptedException { }
+}
+```
+
+那编译器就会提示错误：
+
+```java
+Error:(9, 16) java: com.itwanger.overriding.Dog中的eat()无法覆盖com.itwanger.overriding.Animal中的eat()
+  被覆盖的方法未抛出java.lang.InterruptedException
+```
+
+但如果子类抛出的是一个 unchecked 异常，那就没有冲突：
+
+```java
+public class Dog extends Animal {
+   public void eat() throws FileNotFoundException, IllegalArgumentException { }
+}
+```
+
+如果子类抛出的是一个更高级别的异常：
+
+```Java
+public class Dog extends Animal {
+   public void eat() throws Exception { }
+}
+```
+
+编译器同样会提示错误，因为 Exception 是 IOException 的父类。
+
+```java
+Error:(9, 16) java: com.itwanger.overriding.Dog中的eat()无法覆盖com.itwanger.overriding.Animal中的eat()
+  被覆盖的方法未抛出java.lang.Exception
+```
+
+
+
+#### **规则⑦：可以在子类中通过 super 关键字来调用父类中被重写的方法**。
+
+子类继承父类的方法而不是重新实现是很常见的一种做法，在这种情况下，可以按照下面的形式调用父类的方法：
+
+```java
+super.overriddenMethodName();
+```
+
+来看例子:
+
+```java
+public class Animal {
+    protected void eat() { }
+}
+```
+
+子类重写了 `eat()` 方法，然后在子类的 `eat()` 方法中，可以在方法体的第一行通过 `super.eat()` 调用父类的方法，然后再增加属于自己的代码。
+
+```java
+public class Dog extends Animal {
+   public void eat() {
+       super.eat();
+       // Dog-eat
+   }
+}
+```
+
+
+
+#### **规则⑧：构造方法不能被重写**。
+
+因为[构造方法](https://javabetter.cn/oo/construct.html)很特殊，而且子类的构造方法不能和父类的构造方法同名（类名不同），所以构造方法和重写之间没有任何关系。
+
+
+
+#### **规则⑨：如果一个类继承了抽象类，抽象类中的抽象方法必须在子类中被重写**。
+
+先来看这样一个接口：
+
+```java
+public interface Animal {
+    void move();
+}
+```
+
+接口中的方法默认都是抽象方法，通过反编译是可以看得到的：
+
+```java
+public interface Animal
+{
+    public abstract void move();
+}
+```
+
+如果一个抽象类实现了 Animal 接口，`move()` 方法不是必须被重写的：
+
+```java
+public abstract class AbstractDog implements Animal {
+    protected abstract void bark();
+}
+```
+
+但如果一个类继承了抽象类 AbstractDog，那么 Animal 接口中的 `move()` 方法和抽象类 AbstractDog 中的抽象方法 `bark()` 都必须被重写：
+
+```java
+public class BullDog extends AbstractDog {
+ 
+    public void move() {}
+ 
+    protected void bark() {}
+}
+```
+
+
+
+#### **规则⑩：synchronized 关键字对重写规则没有任何影响**。
+
+[synchronized 关键字](https://javabetter.cn/thread/synchronized-1.html)用于在多线程环境中获取和释放监听对象，因此它对重写规则没有任何影响，这就意味着 synchronized 方法可以去重写一个非同步方法。
+
+我们后面会重点探讨这部分
+
+
+
+#### **规则是①①：strictfp 关键字对重写规则没有任何影响**。
+
+如果你想让浮点运算更加精确，而且不会因为硬件平台的不同导致执行的结果不一致的话，可以在方法上添加 [strictfp 关键字，之前讲过](https://javabetter.cn/basic-extra-meal/48-keywords.html)。因此 strictfp 关键字和重写规则无关。
+
+
+
+### 03、总结
+
+说一下**方法重载**时的注意事项，‘两同一不同’。”
+
+“‘两同’：在同一个类，方法名相同。”
+
+“‘一不同’：参数不同。”
+
+
+
+再来说一下**方法重写**时的注意事项，‘两同一小一大’。”
+
+“‘两同’：方法名相同，参数相同。”
+
+“‘一小’：子类方法声明的异常类型要比父类小一些或者相等。”
+
+“‘一大’：子类方法的访问权限应该比父类的更大或者相等。”
+
+
+
+## Java注解
+
+### 1.定义
+
+注解是 Java 中非常重要的一部分，但经常被忽视也是真的。之所以这么说是因为我们更倾向成为一名注解的使用者而不是创建者。`@Override` 注解用过吧？[方法重写](https://javabetter.cn/basic-extra-meal/override-overload.html)的时候用到过。
+
+注解（Annotation）是在 Java 1.5 时引入的概念，同 class 和 interface 一样，也属于一种类型。注解提供了一系列数据用来装饰程序代码（类、方法、字段等），但是注解并不是所装饰代码的一部分，它对代码的运行效果没有直接影响，由编译器决定该执行哪些操作。
+
+来看一段代码。
+
+```java
+public class AutowiredTest {
+    @Autowired
+    private String name;
+
+    public static void main(String[] args) {
+        System.out.println("沉默王二，一枚有趣的程序员");
+    }
+}
+```
+
+注意到 `@Autowired` 这个注解了吧？它本来是为 Spring（后面会讲）容器注入 Bean 的，现在被我无情地扔在了字段 name 的身上，但这段代码所在的项目中并没有启用 Spring，意味着 `@Autowired` 注解此时只是一个摆设。
+
+> 这里的@`Autowired`没有任何实际意义,只是作为例子，证明：注解对代码的运行效果没有直接影响
+
+
+
+接下来讲讲注解的生命周期,注解的生命周期有 3 种策略，定义在 RetentionPolicy 枚举中:
+
+1）SOURCE：在源文件中有效，被编译器丢弃。
+
+2）CLASS：在编译器生成的字节码文件中有效，但在运行时会被处理类文件的 JVM 丢弃。
+
+3）RUNTIME：在运行时有效。这也是注解生命周期中最常用的一种策略，它允许程序通过反射的方式访问注解，并根据注解的定义执行相应的代码,反射的内容我们后面会重点提及.
+
+| **级别**    | **含义**                                             | **场景**                             |
+| ----------- | ---------------------------------------------------- | ------------------------------------ |
+| **SOURCE**  | 只在源码里有，编译成 `.class` 后就消失了。           | `@Override`、Lombok 注解             |
+| **CLASS**   | 留在 `.class` 里，但 JVM 运行时不理它。              | 字节码增强（较少见）                 |
+| **RUNTIME** | **最强大**。程序运行期间一直都在，可以通过代码读取。 | **Spring、Hibernate 等所有主流框架** |
+
+
+
+### 2.注解装饰的目标
+
+注解的目标定义了注解将适用于哪一种级别的 Java 代码上，有些注解只适用于方法，有些只适用于成员变量，有些只适用于类，有些则都适用。截止到 Java 9，注解的类型一共有 11 种，定义在 ElementType 枚举中。
+
+| **序号** | **关键字**        | **适用范围**                               |
+| -------- | ----------------- | ------------------------------------------ |
+| 1        | `TYPE`            | 用于类、接口、注解、枚举                   |
+| 2        | `FIELD`           | 用于字段（类的成员变量），或者枚举常量     |
+| 3        | `METHOD`          | 用于方法                                   |
+| 4        | `PARAMETER`       | 用于普通方法或者构造方法的参数             |
+| 5        | `CONSTRUCTOR`     | 用于构造方法                               |
+| 6        | `LOCAL_VARIABLE`  | 用于变量                                   |
+| 7        | `ANNOTATION_TYPE` | 用于注解                                   |
+| 8        | `PACKAGE`         | 用于包                                     |
+| 9        | `TYPE_PARAMETER`  | 用于泛型参数                               |
+| 10       | `TYPE_USE`        | 用于声明语句、泛型或者强制转换语句中的类型 |
+| 11       | `MODULE`          | 用于模块                                   |
+
+
+
+### 3.例子1
+
+说再多也不如直接的代码,来看下面这段代码
+
+```java
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.FIELD)
+public @interface JsonField {
+    public String value() default "";
+}
+```
+
+1）JsonField 注解的生命周期是 RUNTIME，也就是运行时有效。
+
+2）JsonField 注解装饰的目标是 FIELD，也就是针对字段的。
+
+3）创建注解需要用到 `@interface` 关键字。
+
+4）JsonField 注解有一个参数，名字为 value，类型为 String，默认值为一个空字符串。
+
+“为什么参数名要为 value 呢？有什么特殊的含义吗？”三妹问。
+
+“当然是有的，value 允许注解的使用者提供一个无需指定名字的参数。举个例子，我们可以在一个字段上使用 `@JsonField(value = "沉默王二")`，也可以把 `value =` 省略，变成 `@JsonField("沉默王二")`。”我说。
+
+`default ""` 也有特殊含义,它允许我们在一个字段上直接使用 `@JsonField`，而无需指定参数的名和值。
+
+假设有一个 Writer 类，他有 3 个字段，分别是 age、name 和 bookName，后 2 个是必须序列化的字段。就可以这样来用 `@JsonField` 注解。
+
+```java
+public class Writer {
+    private int age;
+
+    @JsonField("writerName")
+    private String name;
+
+    @JsonField
+    private String bookName;
+
+    public Writer(int age, String name, String bookName) {
+        this.age = age;
+        this.name = name;
+        this.bookName = bookName;
+    }
+
+    // getter / setter
+
+    @Override
+    public String toString() {
+        return "Writer{" +
+                "age=" + age +
+                ", name='" + name + '\'' +
+                ", bookName='" + bookName + '\'' +
+                '}';
+    }
+}
+```
+
+1）name 上的 `@JsonField` 注解提供了显式的字符串值。
+
+2）bookName 上的 `@JsonField` 注解使用了缺省项。
+
+
+
+接下来，我们来编写序列化类 JsonSerializer，内容如下：
+
+```java
+public class JsonSerializer {
+    public static String serialize(Object object) throws IllegalAccessException {
+        Class<?> objectClass = object.getClass();
+        Map<String, String> jsonElements = new HashMap<>();
+        for (Field field : objectClass.getDeclaredFields()) {
+            field.setAccessible(true);
+            if (field.isAnnotationPresent(JsonField.class)) {
+                jsonElements.put(getSerializedKey(field), (String) field.get(object));
+            }
+        }
+        return toJsonString(jsonElements);
+    }
+
+    private static String getSerializedKey(Field field) {
+        String annotationValue = field.getAnnotation(JsonField.class).value();
+        if (annotationValue.isEmpty()) {
+            return field.getName();
+        } else {
+            return annotationValue;
+        }
+    }
+
+    private static String toJsonString(Map<String, String> jsonMap) {
+        String elementsString = jsonMap.entrySet()
+                .stream()
+                .map(entry -> "\"" + entry.getKey() + "\":\"" + entry.getValue() + "\"")
+                .collect(Collectors.joining(","));
+        return "{" + elementsString + "}";
+    }
+}
+```
+
+JsonSerializer 类的内容看起来似乎有点多,但我会一步一步慢慢讲:
+
+1）`serialize()` 方法是用来序列化对象的，它接收一个 Object 类型的参数。`objectClass.getDeclaredFields()` 通过反射的方式获取对象声明的所有字段，然后进行 for 循环遍历。在 for 循环中，先通过 `field.setAccessible(true)` 将反射对象的可访问性设置为 true，供序列化使用（如果没有这个步骤的话，private 字段是无法获取的，会抛出 IllegalAccessException 异常）；再通过 `isAnnotationPresent()` 判断字段是否装饰了 `JsonField` 注解，如果是的话，调用 `getSerializedKey()` 方法，以及获取该对象上由此字段表示的值，并放入 jsonElements 中。
+
+2）`getSerializedKey()` 方法用来获取字段上注解的值，如果注解的值是空的，则返回字段名。
+
+3）`toJsonString()` 方法借助 Stream 流的方式返回格式化后的 JSON 字符串。Stream 流你还没有接触过，不过没关系，后面我再给你讲。
+
+
+
+接下来，我们来写一个测试类 JsonFieldTest:
+
+```java
+public class JsonFieldTest {
+    public static void main(String[] args) throws IllegalAccessException {
+        Writer cmower = new Writer(18,"沉默王二","Web全栈开发进阶之路");
+        System.out.println(JsonSerializer.serialize(cmower));
+    }
+}
+```
+
+程序输出结果如下：
+
+```
+{"bookName":"Web全栈开发进阶之路","writerName":"沉默王二"}
+```
+
+从结果上来看：
+
+1）Writer 类的 age 字段没有装饰 `@JsonField` 注解，所以没有序列化。
+
+2）Writer 类的 name 字段装饰了 `@JsonField` 注解，并且显示指定了字符串“writerName”，所以序列化后变成了 writerName。
+
+3）Writer 类的 bookName 字段装饰了 `@JsonField` 注解，但没有显式指定值，所以序列化后仍然是 bookName。
+
+
+
+
+
+### 4.例子2
+
+这里再举一个可自己撸的例子,更加形象且成体系:
+这个实验会让你看清：**注解是如何从一张死板的“标签”，变成能控制程序运行的“遥控器”的。**
+
+#### 第一步：制作“标签” (定义注解)
+
+在 Java 中，定义注解要用 `@interface`。我们需要给它加上两个重要的“元注解”（注解的注解），告诉 JVM 这个标签贴在哪里、活多久。
+
+```java
+import java.lang.annotation.*;
+
+// 1. 告诉 JVM：这个注解要保留到“运行期”，这样我们才能用代码读到它
+@Retention(RetentionPolicy.RUNTIME) 
+// 2. 告诉 JVM：这个注解只能贴在“方法”上面
+@Target(ElementType.METHOD)
+public @interface LogTime {
+    // 这是一个特殊的标签，不需要写成员变量
+}
+```
+
+
+
+#### 第二步：贴上“标签” (使用注解)
+
+我们写一个模拟业务的类，给其中一个方法打上标签，另一个不打。
+
+
+
+```java
+class MyService {
+    @LogTime // 我们想测量这个方法的耗时
+    public void hardWork() throws InterruptedException {
+        System.out.println("正在进行复杂的计算...");
+        Thread.sleep(1500); // 模拟耗时 1.5 秒
+    }
+
+    public void lazyWork() {
+        System.out.println("我没打标签，我很快。");
+    }
+}
+```
+
+
+
+#### 第三步：制造“大脑” (解析并运行)
+
+这是最关键的一步！注解本身不会动，我们需要写一段逻辑，利用 **反射 (Reflection)** 去寻找那些带有 `@LogTime` 标签的方法，并给它们加上计时功能。
+
+
+
+#### 完整代码
+
+```java
+import java.lang.annotation.*;
+import java.lang.reflect.Method;
+
+// --- 1. 定义注解 ---
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.METHOD)
+@interface LogTime {}
+
+// --- 2. 业务类 ---
+class MyService {
+    @LogTime
+    public void hardWork() throws InterruptedException {
+        Thread.sleep(1500); 
+        System.out.println(">>> 核心业务：计算完成！");
+    }
+
+    public void lazyWork() {
+        System.out.println(">>> 核心业务：轻松搞定。");
+    }
+}
+
+// --- 3. 运行大脑 ---
+public class AnnotationTest {
+    public static void main(String[] args) throws Exception {
+        MyService service = new MyService();
+        
+        // 获取 MyService 类中所有的方法
+        Method[] methods = MyService.class.getDeclaredMethods();
+
+        for (Method method : methods) {
+            // 关键逻辑：检查这个方法上有没有贴 @LogTime 标签
+            if (method.isAnnotationPresent(LogTime.class)) {
+                
+                System.out.println("发现带 @LogTime 的方法：" + method.getName() + "，开始计时...");
+                long start = System.currentTimeMillis();
+                
+                // 正式执行那个方法
+                method.invoke(service);
+                
+                long end = System.currentTimeMillis();
+                System.out.println("方法 [" + method.getName() + "] 执行结束，耗时：" + (end - start) + "ms\n");
+                
+            } else {
+                // 没贴标签的，正常执行
+                method.invoke(service);
+                System.out.println("方法 [" + method.getName() + "] 无需计时。\n");
+            }
+        }
+    }
+}
+```
+
+输出结果:
+
+```java
+我没打标签，我很快。
+方法 [lazyWork] 无需计时。
+
+发现带 @LogTime 的方法：hardWork，开始计时...
+正在进行复杂的运算...
+方法 [hardWork] 执行结束，耗时：1504ms
+```
+
+
+
+#### 总结：你刚才经历了什么？
+
+1. **打标签**：你在方法头上贴了 `@LogTime`。
+2. **搜寻**：`main` 方法通过 `method.isAnnotationPresent()` 像侦探一样扫描整个类。
+3. **动态增强**：当你发现标签后，你并没有直接跑方法，而是先“掐表”，再跑方法，最后“看表”。
+
+这就是 **Spring 框架（AOP 编程）** 的底层逻辑！Spring 会自动帮你写好这个“大脑”，你只需要到处贴标签，程序就会自动拥有日志、事务、权限检查等各种超能力。
+
+
+
+> ## 一些其他问题
+>
+> ①.invoke是干什么的,为什么加了就需要写exception
+>
+> ### 1. `invoke` 是干什么的？
+>
+> 在 Java 中，调用一个方法通常是这样的：`service.hardWork()`。这叫**硬编码**，你在写代码的时候就定死了要调哪个方法。
+>
+> 而 `invoke`（意为“调用”）属于 **`java.lang.reflect.Method`** 类。它的作用是：**在程序运行的时候，动态地去执行某个方法。**
+>
+> **形象比喻：直接按按钮 vs. 遥控器**
+>
+> - **直接调用 (`obj.method()`)**：就像你走到电视机前，直接按下开关。你必须离电视很近（代码里必须有这个对象的引用），而且必须知道开关在哪。
+> - **使用 `invoke`**：就像你手里拿了一个**万能遥控器**。
+>   1. 你先通过信号（方法名）搜寻到这台电视。
+>   2. 你按下了遥控器上的 `invoke` 键。
+>   3. 不管这台电视是什么品牌，只要它有这个信号接口，它就会开启。
+>
+> ------
+>
+> ### 2. 为什么加了 `invoke` 就必须写 `Exception`？
+>
+> 这是因为 `invoke` 是一个**“高风险操作”**。编译器在编译阶段无法保证你这次“遥控”一定会成功，所以它强迫你必须做好“翻车”后的心理准备（即处理异常）。
+>
+> 使用 `invoke` 时，可能会遇到以下几个“意外”：
+>
+> #### ① `IllegalAccessException` (访问权限异常)
+>
+> - **情景**：你试图用遥控器打开邻居家的电视，但人家加了锁。
+> - **原因**：你想调用的方法可能是 `private`（私有）的。虽然反射可以强行访问，但默认情况下 Java 会拦截并报错。
+>
+> #### ② `IllegalArgumentException` (参数非法异常)
+>
+> - **情景**：电视机需要 220V 电压，你给了它 110V。
+> - **原因**：你调用的方法需要一个 `String` 参数，但你传进去一个 `int`。
+>
+> #### ③ `InvocationTargetException` (目标调用异常) —— **最重要**
+>
+> - **情景**：遥控器没问题，指令也发出去了，但电视机**由于内部零件坏了，自己炸了**。
+> - **原因**：被调用的方法内部抛出了异常（比如 `NullPointerException`）。由于你是通过反射调用的，Java 会把那个原始异常“套娃”在这个 `InvocationTargetException` 里面丢给你。
+>
+> ------
+>
+> ### 3. 编译器的“安全带”逻辑
+>
+> Java 把这些异常统称为 **Checked Exceptions（受检异常）**。
+>
+> - **普通调用**：编译器知道 `service.hardWork()` 到底存不存在，参数对不对，所以它很放心。
+> - **反射调用**：编译器根本不知道你 `invoke` 的到底是哪个方法，也不知道那个方法稳不稳定。
+>
+> **所以，当你写下 `method.invoke(...)` 时，Java 编译器会立刻对你大喊：**
+>
+> > “嘿！这事儿我不打包票啊！万一方法名写错了呢？万一参数传错了呢？万一那个方法运行一半崩溃了呢？你必须给我写上 `try-catch` 或者在 `main` 方法头上加 `throws Exception`，否则我不让你过！”
+>
+> 
+>
+> ## 2.DeclaredMethods和普通方法有什么区别
+>
+> 简单来说：**`getMethods()` 扫描的是“名声在外”的方法，而 `getDeclaredMethods()` 扫描的是“家门以内”的方法。**
+>
+> | **特性**          | **getMethods()**                | **getDeclaredMethods()**                        |
+> | ----------------- | ------------------------------- | ----------------------------------------------- |
+> | **访问权限**      | **仅限 public**                 | **所有级别** (public, protected, 默认, private) |
+> | **继承范围**      | **包含** 继承自父类/接口的方法  | **仅限** 当前类自己声明的方法                   |
+> | **Object 类方法** | 包含 (如 `toString`, `wait` 等) | 不包含                                          |
+> | **形象比喻**      | 社交名片（别人能看到的你）      | 家庭账本（只有你自己知道的秘密）                |
+
+
+
+
+
+
+
+###  **5.为什么要有注解？（对比 XML）**
+
+在没有注解的年代，Java 程序员每天都要写大量的 **XML 配置文件**。
+
+- **以前（XML）：** 代码在 A 文件，配置在 B 文件。改个功能要跨两个文件找，极其痛苦。
+- **现在（注解）：** 配置直接写在代码头上。**“所见即所得”**，大大提高了开发效率，也让代码逻辑和配置更紧凑。
+
+
+
+ **一个生活化的比喻**
+
+想象你在超市买了一盒**牛奶**：
+
+- **牛奶本身**：是你的业务代码。
+- **保质期标签**：是注解。它不影响牛奶的口感（不改变代码逻辑），但收银员（编译器）会看它是否过期，物流系统（框架）会根据它决定放哪个货架
+
+
+
+💡**注解本身不干活，它只是信息的搬运工。** 真正干活的是那些背后的“处理器”（编译器或框架），它们读取注解里的信息，然后进行检查、生成代码或改变运行逻辑。
+
+
+
+
+
+
+
+## Java枚举
+
+枚举（enum），是 Java 1.5 时引入的关键字，它表示一种特殊类型的类，继承自 java.lang.Enum。
+
+我们来新建一个枚举 PlayerType。
+
+```java
+public enum PlayerType {
+    TENNIS,
+    FOOTBALL,
+    BASKETBALL
+}
+```
+
+你可能会问:我没看到有继承关系呀?
+
+别着急，看一下反编译后的字节码，就明白了。
+
+```java
+public final class PlayerType extends Enum
+{
+
+    public static PlayerType[] values()
+    {
+        return (PlayerType[])$VALUES.clone();
+    }
+
+    public static PlayerType valueOf(String name)
+    {
+        return (PlayerType)Enum.valueOf(com/cmower/baeldung/enum1/PlayerType, name);
+    }
+
+    private PlayerType(String s, int i)
+    {
+        super(s, i);
+    }
+
+    public static final PlayerType TENNIS;
+    public static final PlayerType FOOTBALL;
+    public static final PlayerType BASKETBALL;
+    private static final PlayerType $VALUES[];
+
+    static 
+    {
+        TENNIS = new PlayerType("TENNIS", 0);
+        FOOTBALL = new PlayerType("FOOTBALL", 1);
+        BASKETBALL = new PlayerType("BASKETBALL", 2);
+        $VALUES = (new PlayerType[] {
+            TENNIS, FOOTBALL, BASKETBALL
+        });
+    }
+}
+```
+
+看到没？Java 编译器帮我们做了很多隐式的工作，不然手写一个枚举就没那么省心省事了。
+
+- 要继承 Enum 类；
+- 要写构造方法；
+- 要声明静态变量和数组；
+- 要用 static 块来初始化静态变量和数组；
+- 要提供静态方法，比如说 `values()` 和 `valueOf(String name)`。
+
+作为开发者，我们的代码量减少了，枚举看起来简洁明了
+
+既然枚举是一种特殊的类，那它其实是可以定义在一个类的内部的，这样它的作用域就可以限定于这个外部类中使用
+
+```java
+public class Player {
+    private PlayerType type;
+    public enum PlayerType {
+        TENNIS,
+        FOOTBALL,
+        BASKETBALL
+    }
+    
+    public boolean isBasketballPlayer() {
+      return getType() == PlayerType.BASKETBALL;
+    }
+
+    public PlayerType getType() {
+        return type;
+    }
+
+    public void setType(PlayerType type) {
+        this.type = type;
+    }
+}
+```
+
+PlayerType 就相当于 Player 的内部类。
+
+由于枚举是 final 的，所以可以确保在 Java 虚拟机中仅有一个常量对象，基于这个原因，我们可以使用“==”运算符来比较两个枚举是否相等，参照 `isBasketballPlayer()` 方法。
+
+
+
+那为什么不使用 `equals()` 方法判断呢？
+
+```java
+if(player.getType().equals(Player.PlayerType.BASKETBALL)){};
+```
+
+==”运算符比较的时候，如果两个对象都为 null，并不会发生 `NullPointerException`，而 `equals()` 方法则会。
+
+另外， “==”运算符会在编译时进行检查，如果两侧的类型不匹配，会提示错误，而 `equals()` 方法则不会。
+
+<img src="../assets/javaAssets/14.enumerate.png" width="75%" style="display: block; margin: 0 auto;">
+
+枚举还可用于 switch 语句，和基本数据类型的用法一致。
+
+```java
+switch (playerType) {
+    case TENNIS:
+        return "网球运动员费德勒";
+    case FOOTBALL:
+        return "足球运动员C罗";
+    case BASKETBALL:
+        return "篮球运动员詹姆斯";
+    case UNKNOWN:
+        throw new IllegalArgumentException("未知");
+    default:
+        throw new IllegalArgumentException(
+                "运动员类型: " + playerType);
+
+}
+```
+
+如果枚举中需要包含更多信息的话，可以为其添加一些字段，比如下面示例中的 name，此时需要为枚举添加一个带参的构造方法，这样就可以在定义枚举时添加对应的名称了
+
+```java
+public enum PlayerType {
+    TENNIS("网球"),
+    FOOTBALL("足球"),
+    BASKETBALL("篮球");
+
+    private String name;
+
+    PlayerType(String name) {
+        this.name = name;
+    }
+}
+```
+
+
+
+那接下来，我就来说点不一样的。
+
+EnumSet 是一个专门针对枚举类型的 [Set 接口](https://javabetter.cn/collection/gailan.html)（后面会讲）的实现类，它是处理枚举类型数据的一把利器，非常高效。”我说，“从名字上就可以看得出，EnumSet 不仅和 Set 有关系，和枚举也有关系。
+
+因为 EnumSet 是一个抽象类，所以创建 EnumSet 时不能使用 new 关键字。不过，EnumSet 提供了很多有用的静态工厂方法。
+
+> 为什么不能用new:
+>
+> **生活中的例子**： 你去水果店跟老板说：“老板，给我来一个**水果**。” 老板会很懵：“你要苹果、香蕉还是梨？‘水果’只是个分类，我没法直接卖给你一个‘水果’对象。”
+>
+> **代码中的例子**： 你定义了一个抽象类 `Animal`，里面有一个抽象方法 `makeSound()`。 如果你能执行 `Animal a = new Animal();`，那么当你调用 `a.makeSound();` 时，电脑该怎么办？这个方法根本没有代码体（没有大括号里的逻辑），程序会直接卡死。
+
+<img src="../assets/javaAssets/14.enumerate2.png" width="35%" style="display: block; margin: 0 auto;">
+
+来看下面这个例子，我们使用 `noneOf()` 静态工厂方法创建了一个空的 PlayerType 类型的 EnumSet；使用 `allOf()` 静态工厂方法创建了一个包含所有 PlayerType 类型的 EnumSet。
+
+```java
+public class EnumSetTest {
+    public enum PlayerType {
+        TENNIS,
+        FOOTBALL,
+        BASKETBALL
+    }
+
+    public static void main(String[] args) {
+        EnumSet<PlayerType> enumSetNone = EnumSet.noneOf(PlayerType.class);
+        System.out.println(enumSetNone);
+
+        EnumSet<PlayerType> enumSetAll = EnumSet.allOf(PlayerType.class);
+        System.out.println(enumSetAll);
+    }
+}
+```
+
+```java
+[]
+[TENNIS, FOOTBALL, BASKETBALL]
+```
+
+有了 EnumSet 后，就可以使用 Set 的一些方法了，见下图。
+
+<img src="../assets/javaAssets/14.enumerate3.png" width="35%" style="display: block; margin: 0 auto;">
+
+除了 EnumSet，还有 EnumMap，是一个专门针对枚举类型的 Map 接口的实现类，它可以将枚举常量作为键来使用。EnumMap 的效率比 HashMap 还要高，可以直接通过数组下标（枚举的 ordinal 值）访问到元素
+
+和 EnumSet 不同，EnumMap 不是一个抽象类，所以创建 EnumMap 时可以使用 new 关键字。
+
+```java
+EnumMap<PlayerType, String> enumMap = new EnumMap<>(PlayerType.class);
+```
+
+有了 EnumMap 对象后就可以使用 Map 的一些方法了，见下图。
+
+和 [HashMap](https://javabetter.cn/collection/hashmap.html)（后面会讲）的使用方法大致相同，来看下面的例子:
+
+```java
+EnumMap<PlayerType, String> enumMap = new EnumMap<>(PlayerType.class);
+enumMap.put(PlayerType.BASKETBALL,"篮球运动员");
+enumMap.put(PlayerType.FOOTBALL,"足球运动员");
+enumMap.put(PlayerType.TENNIS,"网球运动员");
+System.out.println(enumMap);
+
+System.out.println(enumMap.get(PlayerType.BASKETBALL));
+System.out.println(enumMap.containsKey(PlayerType.BASKETBALL));
+System.out.println(enumMap.remove(PlayerType.BASKETBALL));
+```
+
+来看一下输出结果。
+
+```java
+{TENNIS=网球运动员, FOOTBALL=足球运动员, BASKETBALL=篮球运动员}
+篮球运动员
+true
+篮球运动员
+```
+
+除了以上这些，《Effective Java》这本书里还提到了一点，如果要实现单例的话，最好使用枚举的方式。
+
+单例（Singleton）用来保证一个类仅有一个对象，并提供一个访问它的全局访问点，在一个进程中。因为这个类只有一个对象，所以就不能再使用 `new` 关键字来创建新的对象了。
+
+Java 标准库有一些类就是单例，比如说 Runtime 这个类。
+
+```java
+Runtime runtime = Runtime.getRuntime();
+```
+
+Runtime 类可以用来获取 Java 程序运行时的环境。
+
+通常情况下，实现单例并非易事，来看下面这种写法。
+
+```java
+public class Singleton {  
+    private volatile static Singleton singleton; 
+    private Singleton (){}  
+    public static Singleton getSingleton() {  
+    if (singleton == null) {
+        synchronized (Singleton.class) { 
+        if (singleton == null) {  
+            singleton = new Singleton(); 
+        }  
+        }  
+    }  
+    return singleton;  
+    }  
+}
+```
+
+要用到 [volatile](https://javabetter.cn/thread/volatile.html)、[synchronized](https://javabetter.cn/thread/synchronized-1.html) 关键字等等，但枚举的出现，让代码量减少到极致。
+
+```java
+public enum EasySingleton{
+    INSTANCE;
+}
+```
+
+你可能会瞪大眼睛,表示不可思议,但事实确实如此
+
+枚举默认实现了 [Serializable 接口](https://javabetter.cn/io/Serializbale.html)，因此 Java 虚拟机可以保证该类为单例，这与传统的实现方式不大相同。传统方式中，我们必须确保单例在反序列化期间不能创建任何新实例
+
+
+
+
+
+枚举（Enum）在 Java 里绝对属于“**表面看起来风平浪静，底下暗流涌动**”的设计。
+
+之所以觉得它简单，是因为 Java 编译器帮你做了大量的“脏活累活”。一旦脱掉它的语法糖外壳，你会发现它其实是一个**极致工业化的单例模式实现**。
+
+我们还可以从以下三个维度来拆解它的底层复杂性：
+
+------
+
+**1. 编译器的“魔法”：它其实是一个类**
+
+当你写下 `enum Color { RED, GREEN }` 时，编译器会把它背地里转化成一个**继承自 `java.lang.Enum` 的类**。
+
+- **核心转化逻辑**：
+  - 它是一个 `final` 类，不能被继承。
+  - 每一个枚举成员（如 `RED`），本质上都是该类的一个 `public static final` **实例对象**。
+  - 它会自动生成一个 `private` 的构造函数。
+
+> **这就是为什么枚举能有方法、能有构造函数、能实现接口的原因——因为它本质上就是个如假包换的类。**
+
+------
+
+**2. 刚才又提到,为什么说它是“最完美的单例”？**
+
+在讲单例模式时，很多大牛（比如《Effective Java》作者 Joshua Bloch）都推荐用枚举实现单例。这是因为枚举在底层解决了两个最头疼的问题：
+
+- **线程安全**：枚举实例的创建是在类加载阶段完成的，JVM 保证了这个过程是线程绝对安全的。
+- **防止反射与序列化攻击**：
+  - **反射**：Java 在 `Constructor.newInstance()` 源码里硬编码了一行：如果是枚举类型，直接抛异常。你没法用反射强行 `new` 一个枚举。
+  - **序列化**：普通类反序列化会创建新对象，破坏单例；但枚举的反序列化只通过名称查找现有对象，保证了对象的**唯一性**。
+
+------
+
+**3. 高性能的底层工具：`EnumSet` 与 `EnumMap`**
+
+你提到的 `Set` 和 `Map` 在枚举这里有专门的“特供版”，它们的性能高到令人发指。
+
+**EnumSet：位运算的艺术**
+
+如果你用普通的 `HashSet` 存枚举，每个对象都要算 Hash、存引用。
+
+但在 `EnumSet` 内部，它使用的是**位向量（Bit Vector）**。
+
+- 每一个枚举常量对应 64 位 `long` 里的一个 bit。
+- 增加、删除、查找操作全是**位运算**（`AND`, `OR`, `NOT`）。
+- **结果**：它的性能极快，内存占用极低，甚至比手动写 `int` 标志位还要快。
+
+**EnumMap：数组的极致**
+
+`EnumMap` 内部不搞什么 Hash 冲突、链表红黑树。它直接用一个**简单的数组**来存。
+
+- 因为枚举常量的个数是固定的，且每个常量都有一个序号（`ordinal`）。
+- 它直接把序号当作数组下标。
+- **结果**：它是 Java 中最快的 Map 实现之一，查询效率是 $O(1)$，且没有 Hash 碰撞的风险。
+
+------
+
+**4. 总结：枚举的“冰山模型”**
+
+| **表面（你看到的）** | **底层（JVM 做的）**                           | **带来的好处**           |
+| -------------------- | ---------------------------------------------- | ------------------------ |
+| `RED, GREEN`         | `public static final Color RED = new Color();` | 严格的对象唯一性（单例） |
+| 一个简单的集合       | 继承 `java.lang.Enum` 的特殊类                 | 拥有面向对象的所有特性   |
+| 方便的遍历           | 自动生成 `values()` 数组                       | 类型安全，逻辑清晰       |
+| 存储在 Set/Map       | 使用 BitSet 或 Array 优化                      | 接近硬件级的运行效率     |
+
+------
+
+**💡 深度思考**
+
+Java 官方费这么大劲把枚举搞得这么复杂，核心目的只有一个：**把“运行时的错误”提前到“编译时”发现。** 以前用 `static final int` 表示状态，你可能会传错数字；现在用枚举，你只能传那几个确定的对象，编译器帮你挡掉了 90% 的 Bug。
