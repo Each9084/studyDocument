@@ -591,6 +591,7 @@ password:无
 **启动命令**
 
 ```bash
+#注意需要在/export/server/hive目录下输入
 bin/beeline
 
 !connect jdbc:hive2://node1:10000
