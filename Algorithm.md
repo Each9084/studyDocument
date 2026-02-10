@@ -511,3 +511,139 @@ class Node<E> {
 
 我先写一个工具函数，用于创建一条单链表，方便后面的讲解：
 
+```java
+class ListNode {
+    int val;
+    ListNode next;
+    ListNode(int x) { val = x; }
+}
+
+// 输入一个数组，转换为一条单链表
+ListNode createLinkedList(int[] arr) {
+    if (arr == null || arr.length == 0) {
+        return null;
+    }
+    //不变的头
+    ListNode head = new ListNode(arr[0]);
+    //cur是一个随时往下走的指针
+    ListNode cur = head;
+    for (int i = 1; i < arr.length; i++) {
+        cur.next = new ListNode(arr[i]);
+        cur = cur.next;
+    }
+    return head;
+}
+```
+
+
+
+
+
+对于上面整个自定义的工具类多说一下,我们不依赖createLinkedList手动就可以实现链表,createLinkedList把手动指定的环节 工具化:
+
+```java
+ListNode a = new ListNode(1);
+ListNode b = new ListNode(2);
+ListNode c = new ListNode(3);
+
+a.next = b;
+b.next = c;
+
+
+ListNode pointer = a;
+while(pointer!=null){
+	System.out.println(pointer.val);
+    pointer = pointer.next;
+}
+
+```
+
+重点就在 ListNode里的next,彼此通过next连接,此时的初始值pointer存储的是数值"1"以及1下一个地址("2"的地址)
+
+我们一步一步来看;
+①ListNode a = new ListNode(1);
+
+此时a只有数值val=1,还没有next的值,此时为null
+
+②然后a.next = b;
+
+此时a就有了数值val=1 以及下一个的地址(也就是数值为2名为b的**地址**)
+
+b和c以及未来新加的都同理,所以当连起来后,只要知道a,尽管a只有b的值,从他开始他也会知道b,c乃至未来的d,e
+
+然后pointer(header)在这里就是从第一个开始,然后一个遍历而已
+
+知道这个就明白:`createLinkedList`是帮我们把手动a.next = b的这个过程通过遍历来实现了
+
+
+
+
+
+### 查/改
+
+>  单链表的遍历/查找/修改
+
+比方说，我想访问单链表的每一个节点，并打印其值，可以这样写：
+
+```java
+// 创建一条单链表
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 遍历单链表
+for (ListNode p = head; p != null; p = p.next) {
+    System.out.println(p.val);
+}
+```
+
+类似的，如果是要通过索引访问或修改链表中的某个节点，也只能用 for 循环从头结点开始往后找，直到找到索引对应的节点，然后进行访问或修改。
+
+这个操作的最坏时间复杂度是 O(n)*O*(*n*)，其中 n*n* 是链表的长度。
+
+
+
+### 增
+
+> 在单链表头部插入新元素
+
+我们会持有单链表的头结点，所以只需要将插入的节点接到头结点之前，并将新插入的节点作为头结点即可。
+
+```java
+// 创建一条单链表
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 在单链表头部插入一个新节点 0
+ListNode newNode = new ListNode(0);
+//此时已经连上了
+newNode.next = head;
+//这一步的意义是让火车头知道谁是新的,不然每次要通过mewNode从头开始不利于规范
+head = newNode;
+
+// 现在链表变成了 0 -> 1 -> 2 -> 3 -> 4 -> 5
+```
+
+这个操作的时间复杂度是 $O(1)$。
+
+
+
+> 在单链表尾部插入新元素
+
+直接看代码吧，很简单：
+
+```java
+// 创建一条单链表
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 在单链表尾部插入一个新节点 6
+ListNode p = head;
+// 先走到链表的最后一个节点
+while (p.next != null) {
+    p = p.next;
+}
+// 现在 p 就是链表的最后一个节点
+// 在 p 后面插入新节点
+p.next = new ListNode(6);
+
+// 现在链表变成了 1 -> 2 -> 3 -> 4 -> 5 -> 6
+```
+
+这个操作的时间复杂度是 O(n)，因为需要先遍历到链表尾部。当然，如果我们持有对链表尾节点的引用，那么在尾部插入新节点的操作就会变得非常简单，不用每次从头去遍历了。这个优化会在后面具体实现双链表时介绍。
