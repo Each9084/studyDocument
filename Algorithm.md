@@ -400,9 +400,9 @@ int index = arr.indexOf(666);
 
 
 
-### 链表（链式存储）基本原理
+## 链表（链式存储）基本原理
 
-#### 1.定义
+### 1.定义
 
 如果说**数组**是一排**排好号的电影院座位**（位置固定且连在一起），那么**链表**就是一场**全城范围的寻宝游戏**。
 
@@ -433,7 +433,7 @@ int index = arr.indexOf(666);
 
 
 
-#### **2.链表家族**
+### **2.链表家族**
 
 1. **单链表：** 只有 `Next` 指针。就像单行道，只能往前走，回不了头。
 2. **双链表：** 每个节点既有 `Next` 也有 `Prev`（指向前一个）。就像双向车道，虽然费点内存，但更灵活。
@@ -477,7 +477,7 @@ class Node<E> {
 
 
 
-#### 3.为什么要发明链表？
+### 3.为什么要发明链表？
 
 数组不是挺好吗？
 
@@ -507,7 +507,17 @@ class Node<E> {
 
 
 
-#### 4.单链表的基本操作
+### 4.ListNode和DoublyListNode到底是什么:
+
+在之后我们很快就会见到ListNode和DoublyListNode,来说一下他们这个类到底是什么:
+
+<span style="color:red">DoublyNodeList里面存储着val以及prev和next的DoublyNodeList对象,然后这里的prev和next是以地址存在的,在实际我们的遍历中,是通过next以及prev的地址然后得到对应的prev以及next的DoublyNodeList对象,然后里面存储着下下一个(相对于首个节点而言)的val以及prev和next的DoublyNodeList对象,这样在遍历的**感官**上让我们感觉好像拥有了prev以及next里的内容,但**实际上只根据当前节点根本不知道下一个节点里的实际内容,因为本质上是地址**,然后我们是通过地址访问相当于才跳转并刷新出下一个节点的内容,再不进入下一个节点之前,当前节点的next实际上存储的只是冷冰冰的地址</span>
+
+
+
+### 单链表
+
+#### 基本操作
 
 我先写一个工具函数，用于创建一条单链表，方便后面的讲解：
 
@@ -579,9 +589,9 @@ b和c以及未来新加的都同理,所以当连起来后,只要知道a,尽管a�
 
 
 
-### 查/改
+#### 查/改
 
->  单链表的遍历/查找/修改
+**单链表的遍历/查找/修改**
 
 比方说，我想访问单链表的每一个节点，并打印其值，可以这样写：
 
@@ -601,9 +611,9 @@ for (ListNode p = head; p != null; p = p.next) {
 
 
 
-### 增
+#### 增
 
-> 在单链表头部插入新元素
+##### 1.在单链表头部插入新元素
 
 我们会持有单链表的头结点，所以只需要将插入的节点接到头结点之前，并将新插入的节点作为头结点即可。
 
@@ -625,7 +635,7 @@ head = newNode;
 
 
 
-> 在单链表尾部插入新元素
+##### 2.在单链表尾部插入新元素
 
 直接看代码吧，很简单：
 
@@ -647,3 +657,419 @@ p.next = new ListNode(6);
 ```
 
 这个操作的时间复杂度是 O(n)，因为需要先遍历到链表尾部。当然，如果我们持有对链表尾节点的引用，那么在尾部插入新节点的操作就会变得非常简单，不用每次从头去遍历了。这个优化会在后面具体实现双链表时介绍。
+
+
+
+##### 3.在单链表中间插入新元素
+
+这个操作稍微有点复杂，我们还是要先找到要插入位置的前驱节点，然后操作前驱节点把新节点插入进去：
+
+```java
+// 创建一条单链表
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 在第 3 个节点后面插入一个新节点 66
+// 先要找到前驱节点，即第 3 个节点
+ListNode p = head;
+for (int i = 0; i < 2; i++) {
+    p = p.next;
+}
+// 此时 p 指向第 3 个节点
+// 组装新节点的后驱指针
+ListNode newNode = new ListNode(66);
+newNode.next = p.next;
+
+// 插入新节点
+p.next = newNode;
+
+// 现在链表变成了 1 -> 2 -> 3 -> 66 -> 4 -> 5
+```
+
+这个操作的时间复杂度是 $O(n)$，因为需要先找到插入位置的前驱节点。
+
+
+
+#### 删
+
+##### 1.在单链表中删除一个节点
+
+删除一个节点，首先要找到要被删除节点的前驱节点，然后把这个前驱节点的 `next` 指针指向被删除节点的下一个节点。这样就能把被删除节点从链表中摘除了。
+
+```java
+// 创建一条单链表
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 删除第 4 个节点，要操作前驱节点
+ListNode p = head;
+for (int i = 0; i < 2; i++) {
+    p = p.next;
+}
+
+// 此时 p 指向第 3 个节点，即要删除节点的前驱节点
+// 把第 4 个节点从链表中摘除
+p.next = p.next.next;
+
+// 现在链表变成了 1 -> 2 -> 3 -> 5
+```
+
+这个操作的时间复杂度是 $O(n)$，因为需要先找到被删除节点的前驱节点。
+
+
+
+##### 2.在单链表尾部删除元素
+
+这个操作比较简单，找到倒数第二个节点，然后把它的 `next` 指针置为 null 就行了：
+
+```java
+// 创建一条单链表
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 删除尾节点
+ListNode p = head;
+// 找到倒数第二个节点
+while (p.next.next != null) {
+    p = p.next;
+}
+
+// 此时 p 指向倒数第二个节点
+// 把尾节点从链表中摘除
+p.next = null;
+
+// 现在链表变成了 1 -> 2 -> 3 -> 4
+```
+
+这个操作的时间复杂度是 $O(n)$，因为需要先遍历到倒数第二个节点。
+
+
+
+##### 3.在单链表头部删除元素
+
+这个操作比较简单，直接把 `head` 移动到下一个节点就行了，直接看代码吧：
+
+```java
+// 创建一条单链表
+ListNode head = createLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 删除头结点
+head = head.next;
+
+// 现在链表变成了 2 -> 3 -> 4 -> 5
+```
+
+这个操作的时间复杂度是 $O(1)$。
+
+不过可能有读者疑惑，之前那个旧的头结点 `1` 的 next 指针依然指向着节点 `2`，这样会不会造成内存泄漏？
+
+不会的，这个节点 `1` 指向其他的节点是没关系的，只要保证没有其他引用指向这个节点 `1`，它就能被垃圾回收器回收掉。
+
+当然，如果你非要显式把节点 `1` 的 next 指针置为 null，这是个很好的习惯，在其他场景中可能可以避免指针错乱的潜在问题。
+
+在下面这个可视化面板中，我显式地把待删除节点的 next 指针置为 null 了：
+
+> 链表的增删查改操作确实比数组复杂。这是因为链表的节点不是紧挨着的，所以要增删一个节点，必须先找到它的前驱和后驱节点进行协同，然后才能通过指针操作把它插入或删除。
+>
+> 上面给出的代码还仅仅是最简单的例子，你会发现在头部、尾部、中间增删元素的代码都不一样。如果要实现一个真正可用的链表，你还要考虑到很多边界情况，比如链表可能为空、前后驱节点可能为空等，这些情况都得保证不出错。
+>
+> 而且，上面只是介绍了「单链表」，而我们下一章要实现的是「双链表」，双链表要同时维护前驱和后驱指针，指针操作会更复杂一些。
+>
+> 是不是已经不敢想了？不要怕，其实没你想的那么难，几个原因：
+>
+> 1、其实搞来搞去就那几个操作，等会儿带你动手实现链表 API 的时候，你亲自写一写，就会了。
+>
+> 2、复杂操作我都配了可视化面板，你可以结合面板中的代码和动画进行理解。
+>
+> 3、最重要的，我们会使用「**虚拟头结点**」技巧，把头、尾、中部的操作统一起来，同时还能避免处理头尾指针为空情况的边界情况。
+>
+> 虚拟节点技巧在 [单链表经典算法技巧](https://labuladong.online/zh/algo/essential-technique/linked-list-skills-summary/) 中也会经常运用，这里仅仅简单提一下，具体实现会在后面讲到。
+
+
+
+### 双链表
+
+#### 基本操作
+
+先写一个工具函数，用于创建一条双链表，方便后面的讲解：
+
+```java
+class DoublyListNode {
+    int val;
+    DoublyListNode next, prev;
+    DoublyListNode(int x) { val = x; }
+}
+
+DoublyListNode createDoublyLinkedList(int[] arr) {
+    if (arr == null || arr.length == 0) {
+        return null;
+    }
+    DoublyListNode head = new DoublyListNode(arr[0]);
+    DoublyListNode cur = head;
+    // for 循环迭代创建双链表
+    for (int i = 1; i < arr.length; i++) {
+        DoublyListNode newNode = new DoublyListNode(arr[i]);
+        cur.next = newNode;
+        newNode.prev = cur;
+        cur = cur.next;
+    }
+    return head;
+}
+```
+
+
+
+#### 查/改
+
+> 双链表的遍历/查找/修改
+
+对于双链表的遍历和查找，我们可以从头节点或尾节点开始，根据需要向前或向后遍历：
+
+```java
+// 创建一条双链表
+DoublyListNode head = createDoublyLinkedList(new int[]{1, 2, 3, 4, 5});
+DoublyListNode tail = null;
+
+// 从头节点向后遍历双链表
+for (DoublyListNode p = head; p != null; p = p.next) {
+    System.out.println(p.val);
+    tail = p;
+}
+
+// 从尾节点向前遍历双链表
+for (DoublyListNode p = tail; p != null; p = p.prev) {
+    System.out.println(p.val);
+}
+```
+
+这个操作的最坏时间复杂度是 $O(n)$。访问或修改节点时，可以根据索引是靠近头部还是尾部，选择合适的方向遍历，这样可以一定程度上提高效率。
+
+
+
+#### 增
+
+##### 1.在双链表头部插入新元素
+
+在双链表头部插入元素，需要调整新节点和原头节点的指针：
+
+```java
+// 创建一条双链表
+DoublyListNode head = createDoublyLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 在双链表头部插入新节点 0
+DoublyListNode newHead = new DoublyListNode(0);
+newHead.next = head;
+head.prev = newHead;
+head = newHead;
+// 现在链表变成了 0 -> 1 -> 2 -> 3 -> 4 -> 5
+```
+
+这个操作的时间复杂度是 $O(1)$。
+
+
+
+##### 2.在双链表尾部插入新元素
+
+在双链表尾部插入元素时，如果我们持有尾节点的引用，这个操作会非常简单：
+
+```java
+// 创建一条双链表
+DoublyListNode head = createDoublyLinkedList(new int[]{1, 2, 3, 4, 5});
+
+DoublyListNode tail = head;
+// 先走到链表的最后一个节点
+while (tail.next != null) {
+    tail = tail.next;
+}
+
+// 在双链表尾部插入新节点 6
+DoublyListNode newNode = new DoublyListNode(6);
+tail.next = newNode;
+newNode.prev = tail;
+// 更新尾节点引用
+tail = newNode;
+
+// 现在链表变成了 1 -> 2 -> 3 -> 4 -> 5 -> 6
+```
+
+这个操作的时间复杂度是 $O(n)$，因为需要先遍历到尾节点。如果持有尾节点引用，则是 $O(1)$。
+
+
+
+##### 3.在双链表中间插入新元素
+
+在双链表的指定位置插入新元素，需要调整前驱节点和后继节点的指针。
+
+比如下面的例子，把元素 66 插入到索引 3（第 4 个节点）的位置：
+
+```java
+// 创建一条双链表
+DoublyListNode head = createDoublyLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 想要插入到索引 3（第 4 个节点）
+// 需要操作索引 2（第 3 个节点）的指针
+DoublyListNode p = head;
+for (int i = 0; i < 2; i++) {
+    p = p.next;
+}
+
+// 组装新节点
+DoublyListNode newNode = new DoublyListNode(66);
+newNode.next = p.next;
+newNode.prev = p;
+
+// 插入新节点
+p.next.prev = newNode;
+p.next = newNode;
+
+// 现在链表变成了 1 -> 2 -> 3 -> 66 -> 4 -> 5
+```
+
+这个操作的时间复杂度是 $O(n)$，因为需要先找到插入位置。
+
+
+
+#### 删
+
+##### 1.在双链表中删除一个节点
+
+在双链表中删除节点时，需要调整前驱节点和后继节点的指针来摘除目标节点：
+
+```
+// 创建一条双链表
+DoublyListNode head = createDoublyLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 删除第 4 个节点
+// 先找到第 3 个节点
+DoublyListNode p = head;
+for (int i = 0; i < 2; i++) {
+    p = p.next;
+}
+
+// 现在 p 指向第 3 个节点，我们它后面那个节点摘除出去
+DoublyListNode toDelete = p.next;
+
+// 把 toDelete 从链表中摘除
+p.next = toDelete.next;
+toDelete.next.prev = p;
+
+// 把 toDelete 的前后指针都置为 null 是个好习惯（可选）
+toDelete.next = null;
+toDelete.prev = null;
+
+// 现在链表变成了 1 -> 2 -> 3 -> 5
+```
+
+当然为了安全性向大厂看齐建议写成:
+
+```java
+DoublyListNode head = DoublyListNode.createDoublyLinkedList(new int[]{1,2,3,00,5,6,7});
+DoublyListNode p = head;
+for (int i = 0; i < 2; i++) {
+     p = p.next;
+}
+DoublyListNode toDelete = p.next;
+DoublyListNode boundTest = toDelete.next;
+
+p.next = boundTest;
+if (boundTest != null){
+     toDelete.next.prev = p;
+}
+
+
+toDelete.next = null;
+toDelete.prev = null;
+toDelete.printList();
+head.printList();
+```
+
+>  其中之所以`p.next = boundTest;`在if外面是因为有可能我们删除的是最后一个元素,而boundTest此时就是最后一个元素的next,所以当然有可能为null
+>
+> 然后是为什么要判断`boundTest != null`因为如果boundTest是null,那么就会触发`NullPointerException (NPE，空指针异常)。`而众所周知,`null` 在内存中代表“什么都没有”。,不能让“什么都没有”去执行动作。
+>
+> 然后手动写null会防止内存泄漏,是个好习惯
+
+
+
+##### 2.在双链表头部删除元素
+
+在双链表头部删除元素需要调整头节点的指针
+
+```java
+// 创建一条双链表
+DoublyListNode head = createDoublyLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 删除头结点
+DoublyListNode toDelete = head;
+head = head.next;
+head.prev = null;
+
+// 清理已删除节点的指针
+toDelete.next = null;
+
+// 现在链表变成了 2 -> 3 -> 4 -> 5
+```
+
+然后工业级开发:
+
+```java
+public int pollFirst() {
+    // 1. 暂存当前头节点 (f 代表 first)
+    final DoublyListNode f = head;
+    if (f == null) return -1; // 判空
+
+    int element = f.val;
+    // 2. 暂存下一个节点
+    final DoublyListNode nextNode = f.next;
+
+    // 3. 斩断旧头的后路 (帮助 GC)
+    f.next = null; 
+
+    // 4. 移动 head 指针
+    head = nextNode;
+
+    // 5. 处理新头的路标
+    if (nextNode == null) {
+        // 说明删掉的是最后一个节点，tail 也要置空
+        tail = null; 
+    } else {
+        // 斩断新头的前路，彻底孤立旧头
+        nextNode.prev = null;
+    }
+
+    size--;
+    return element;
+}
+```
+
+以上的所有目的都是为了防止内存泄漏
+
+这个操作的时间复杂度是 $O(1)$。
+
+
+
+##### 3.在双链表尾部删除元素
+
+在单链表中，由于缺乏前驱指针，所以删除尾节点时需要遍历到倒数第二个节点，操作它的 `next` 指针，才能把尾节点摘除出去。
+
+但在双链表中，由于每个节点都存储了前驱节点的指针，所以我们可以直接操作尾节点，把它自己从链表中摘除
+
+```
+// 创建一条双链表
+DoublyListNode head = createDoublyLinkedList(new int[]{1, 2, 3, 4, 5});
+
+// 删除尾节点
+DoublyListNode p = head;
+// 找到尾结点
+while (p.next != null) {
+    p = p.next;
+}
+
+// 现在 p 指向尾节点
+// 把尾节点从链表中摘除
+p.prev.next = null;
+
+// 把被删结点的指针都断开是个好习惯（可选）
+p.prev = null;
+
+// 现在链表变成了 1 -> 2 -> 3 -> 4
+```
+
+这个操作的时间复杂度是 $O(n)$，因为需要先遍历到尾节点。如果持有尾节点引用，则是 $O(1)。$
