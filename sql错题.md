@@ -917,7 +917,7 @@ HAVING COUNT(*) >= 3;
 
 2020-10-15没有新用户登录，输出0.000;
 
-(注意:sqlite里查找某一天的后一天的用法是:date(yyyy-mm-dd, '+1 day')，sqlite里1/2得到的不是0.5，得到的是0，只有1*1.0/2才会得到0.5)
+(注意:sqlite里查找某一天的后一天的用法是:date(yyyy-mm-dd, '+1 day')，sqlite里1/2得到的不是0.5，得到的是0，只有1*1.0/2才会得到0.5)	
 
 
 
@@ -929,7 +929,7 @@ HAVING COUNT(*) >= 3;
 
 <span style = "color:teal">②紧接着我们要join第二张表:表1,通过表1我们要选择哪些是新用户,这个通过MIN结合GROUP BY user_id就可以办到,然后关键的部分来了:</span><span style = "color:red">我们需要`ON l0.date = l1.base_date`</span>,<span style = "color:teal">很多人可能会疑惑为什么不用`ON l0.user_id = l1.user_id`,这是因为题目要求统计：**“每个日期”新用户的次日留存**, 这意味着，我们的报表每一行都是一个日期。</span>
 
-<span style="color:teal">**- $l0$ 是“排队窗口”**：它提供了 10-12、10-13、10-14 这样一个个整齐的窗口。</span>
+<span style="color:teal">**- $l0$ 是“排队窗口”**：它提供了 10-12、10-13、10-14 这样一个个整齐的窗口,防止因为某一天为空(放假)而彻底没了数据</span>
 
 <span style="color:teal">**- $l1$ 是“刚出生的婴儿”**：它记录了每个用户以及他们出生的日期（`base_date`）。</span>
 
