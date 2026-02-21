@@ -1134,3 +1134,906 @@ beeline -u "jdbc:hive2://<hs2-host>:10000/default;principal=hive/_HOST@REALM"
 - **工作机制：** 多个 HS2 实例启动后，会在 Zookeeper 的指定目录下注册自己的节点信息（Ephemeral Nodes）。
 - **客户端连接：** Beeline 连接时不再指向某个具体的 IP，而是指向 Zookeeper 地址。
 - **连接字符串示例：** `jdbc:hive2://zk_host1:2181,zk_host2:2181/default;serviceDiscoveryMode=zooKeeper;zooKeeperNamespace=hiveserver2`
+
+
+
+
+
+## 基本操作
+
+### 1.数据库操作
+
+#### ①创建数据库
+
+```hive
+CREATE DATABASE [IF NOT EXISTS] db_name [LOCATION position];
+create database if not exists myhive;
+
+use  myhive;
+```
+
+
+
+#### ②查看数据库详细信息
+
+```hive
+desc  database  myhive;
+```
+
+![2.hive database operation](assets/dataDevAssets/2.hive database operation.png)
+
+数据库本质上就是在HDFS之上的文件夹。
+
+默认数据库的存放路径是HDFS的：`/user/hive/warehouse`内
+
+可以通过`LOCATION`关键字在创建的时候指定存储目录
+
+![2.hive database operation2](assets/dataDevAssets/2.hive database operation2.png)
+
+
+
+#### ③创建数据库并指定hdfs存储位置
+
+```hive
+create database myhive2 location '/myhive2';
+```
+
+使用**`location`**关键字，可以指定数据库在HDFS的存储路径。
+
+
+
+#### ④删除数据库
+
+删除一个空数据库，如果数据库下面有数据表，那么就会报错
+
+```hive
+drop  database  myhive;
+```
+
+
+
+**强制**删除数据库，包含数据库下面的表一起删除
+
+```hive
+CREATE DATABASE [IF NOT EXISTS] db_name [LOCATION position];
+
+drop  database  myhive2  cascade; 
+```
+
+
+
+### 2数据表操作
+
+#### 1.表操作语法和数据类型
+
+##### ①创建/删除数据库表
+
+创建表的语法还是比较复杂的
+
+```hive
+CREATE [EXTERNAL] TABLE [IF NOT EXISTS] table_name
+[ (col_name data_type [COMMENT col_comment], ...) ]
+[COMMENT table_comment]
+[PARTITIONED BY (col_name data_type [COMMENT col_comment], ...)]
+[CLUSTERED BY (col_name, col_name, ...)
+ [SORTED BY (col_name [ASC|DESC], ...)] INTO num_buckets BUCKETS
+]
+[ROW FORMAT row_format]
+[STORED AS file_format]
+[LOCATION hdfs_path];
+```
+
+| **子句**           | **说明**                                                     | **示例**                                       |
+| ------------------ | ------------------------------------------------------------ | ---------------------------------------------- |
+| **EXTERNAL**       | 创建外部表。删除表时**仅删除元数据**，不删除 HDFS 上的实际数据。 | `CREATE EXTERNAL TABLE ...`                    |
+| **PARTITIONED BY** | 建立分区表，用于优化查询性能（物理上表现为子目录）。         | `PARTITIONED BY (dt STRING)`                   |
+| **ROW FORMAT**     | 定义数据行的序列化与反序列化规则（常用分隔符）。             | `DELIMITED FIELDS TERMINATED BY ','`           |
+| **STORED AS**      | 指定文件存储格式（如文本、列式存储等）。                     | `STORED AS ORC` 或 `PARQUET`                   |
+| **LOCATION**       | 指定该表在 HDFS 上的具体存储路径。                           | `LOCATION '/user/hive/warehouse/my_db/my_tbl'` |
+
+
+
+尽管建表语法比较复杂，目前我们暂时未接触到分区、分桶等概念。所以，创建一个简答的数据库表可以有如下SQL：
+
+```hive
+CREATE TABLE test(	
+    id INT,    
+    name STRING,    
+    gender STRING
+);
+```
+
+
+
+如果要删除表可以使用：
+
+```hive
+DROP TABLE table_name;
+```
+
+
+
+
+
+##### ②数据类型
+
+| **分类** | **类型**                                    | **描述**                                       | **字面量示例**                                               |
+| -------- | ------------------------------------------- | ---------------------------------------------- | ------------------------------------------------------------ |
+| 原始类型 | BOOLEAN                                     | true/false                                     | TRUE                                                         |
+|          | TINYINT                                     | 1字节的有符号整数 -128~127                     | 1Y                                                           |
+|          | SMALLINT                                    | 2个字节的有符号整数，-32768~32767              | 1S                                                           |
+|          | <span style="color:red">INT</span>          | 4个字节的带符号整数                            | 1                                                            |
+|          | BIGINT                                      | 8字节带符号整数                                | 1L                                                           |
+|          | FLOAT                                       | 4字节单精度浮点数1.0                           |                                                              |
+|          | <span style="color:red">DOUBLE </span>   | 8字节双精度浮点数                              | 1.0                                                          |
+|          | DEICIMAL                                    | 任意精度的带符号小数                           | 1.0                                                          |
+|          | <span style="color:red">STRING</span>    | 字符串，变长                                   | “a”,’b’                                                      |
+|          | <span style="color:red">VARCHAR</span>   | 变长字符串                                     | “a”,’b’                                                      |
+|          | CHAR                                        | 固定长度字符串                                 | “a”,’b’                                                      |
+|          | BINARY                                      | 字节数组                                       |                                                              |
+|          | <span style="color:red">TIMESTAMP</span> | 时间戳，毫秒值精度                             | 122327493795                                                 |
+|          | <span style="color:red">DATE</span>      | 日期                                           | ‘2016-03-29’                                                 |
+|          |                                             | 时间频率间隔                                   |                                                              |
+| 复杂类型 | ARRAY                                       | 有序的的同类型的集合                           | array(1,2)                                                   |
+|          | MAP                                         | key-value,key必须为原始类型，value可以任意类型 | map(‘a’,1,’b’,2)                                             |
+|          | STRUCT                                      | 字段集合,类型可以不同                          | struct(‘1’,1,1.0), named_stract(‘col1’,’1’,’col2’,1,’clo3’,1.0) |
+|          | UNION                                       | 在有限取值范围内的一个值                       | create_union(1,’a’,63)                                       |
+
+
+
+Hive中支持的数据类型还是比较多的
+
+其中<span style="color:red">红色</span>的是使用比较多的类型(github直接浏览可能没有颜色,请下载md文档到本地查看)
+
+
+
+#### 2.内/外部表介绍
+
+> 开始之前,需要先介绍一下表分类
+>
+Hive中可以创建的表有好几种类型， 分别是：
+
+<span style="color:red">内部表</span>
+
+<span style="color:red">外部表</span>
+
+分区表
+
+分桶表
+
+不同类型的表有各自的用途。
+
+我们首先学习内部表和外部表的区别。
+
+
+
+-----
+
+**内部表**（CREATE TABLE table_name ......）
+
+未被`external`关键字修饰的即是内部表， 即普通表。 
+内部表又称管理表,内部表数据存储的位置由`hive.metastore.warehouse.dir`参数决定（默认：/user/hive/warehouse）,
+删除内部表会直接<span style="color:red">删除元数据（metadata）及存储数据</span>，因此内部表不适合和其他工具共享数据。
+
+
+
+**外部表**（CREATE EXTERNAL TABLE table_name ......LOCATION......）
+
+被`external`关键字修饰的即是外部表， 即关联表。
+外部表是指表数据可以在任何位置，通过`LOCATION`关键字指定。 数据存储的不同也代表了这个表在理念是并不是Hive内部管理的，而是可以随意临时链接到外部数据上的。
+所以，在删除外部表的时候， 仅仅是删除元数据（表的信息），不会删除数据本身。
+
+
+
+快速对比一下内部表和外部表:
+
+|        | **创建**                     | **存储位置**                         | **删除数据**                     | **理念**           |
+| ------ | ---------------------------- | ------------------------------------ | -------------------------------- | ------------------ |
+| 内部表 | CREATE TABLE ......          | Hive管理，默认`/user/hive/warehouse` | 删除 元数据（表信息）删除 数据   | Hive管理表持久使用 |
+| 外部表 | CREATE EXTERNAL TABLE ...... | 随意，`LOCATION`关键字指定           | 仅删除 元数据（表信息）保留 数据 | 临时链接外部数据用 |
+
+
+
+#### 3.内部表操作
+
+##### ①创建内部表
+
+内部表的创建语法就是标准的：CREATE TABLE table_name......
+
+创建一个基础的表:
+
+```hive
+create database if not exists myhive;
+
+use myhive;
+
+create table if not exists stu(id int,name string);
+
+insert into stu values (1,"zhangsan"), (2, "wangwu");select * from stu;
+```
+
+
+
+查看表的数据存储在HDFS上，查看表的数据存储文件
+
+![2.hive database operation3](assets/dataDevAssets/2.hive database operation3.png)
+
+
+
+##### ②数据分隔符
+
+可以看到，数据在HDFS上也是以明文文件存在的。
+
+![2.hive database operation3](assets/dataDevAssets/2.hive database operation3.png)
+
+奇怪的是， 列ID和列NAME，好像没有分隔符，而是挤在一起的。这是因为，默认的数据分隔符是：”\001”是一种特殊字符，是ASCII值，键盘是打不出来在某些文本编辑器中是显示为SOH的。
+
+例如1zhangsan其实是:1`SOH`zhangsan
+
+![2.hive database operation4](assets/dataDevAssets/2.hive database operation4.png)
+
+
+
+##### ③自行指定分隔符
+
+所以我们可以自行指定
+
+在创建表的时候可以自己决定：
+
+```hive
+create table if not exists stu2(id int ,name string) row format delimited fields terminated by '\t';
+```
+
+`row format delimited fields terminated by '\t'`：表示以`\t`分隔 `\t`是我们常见的分隔符,这个大家就很熟悉了
+
+这样中间就更友好的分隔显示出来了
+
+![2.hive database operation5](assets/dataDevAssets/2.hive database operation5.png)
+
+
+
+##### ④其它创建内部表的形式
+
+除了标准的`CREATE TABLE table_name`的形式创建内部表外,我们还可以通过：
+
+- `CREATE TABLE table_name as`，基于查询结果建表
+  e.g. `create table stu3 as select * from stu2;`
+
+- `CREATE TABLE table_name like`，基于已存在的表结构建表
+  e.g.` create table stu4 like stu2;`
+
+- 也可以使用`DESC FORMATTED table_name`，查看表类型和详情
+  e.g. `DESC FORMATTED stu2;`
+
+
+
+##### ⑥删除内部表
+
+我们是内部表删除后，数据本身也不会保留。
+
+- `DROP TABLE table_name`，删除表
+
+  e.g. `drop table stu2`;
+
+  ![2.hive database operation6](assets/dataDevAssets/2.hive database operation6.png)
+
+  可以看到，stu2文件夹已经不存在了，数据被删除了。
+
+
+
+#### 4.外部表操作
+
+##### ①外部表创建
+
+![2.hive database operation7](assets/dataDevAssets/2.hive database operation7.png)
+
+外部表，创建表被`EXTERNAL`关键字修饰，从概念是被认为并非Hive拥有的表，只是临时关联数据去使用。
+
+创建外部表也很简单，基于外部表的特性，可以总结出： 外部表 和 数据 是相互独立的， 即：
+
+- <span style=color:red>可以先有表</span>，然后把数据移动到表指定的LOCATION中
+
+- <span style="color:red">也可以先有数据</span>，然后创建表通过LOCATION指向数据
+
+1.在Linux上创建新文件，test_external.txt，并填入如下内容：
+
+```
+1	itheima
+2	itcast
+3	hadoop
+```
+
+数据列用`\t`分隔,我们前文提到过
+
+
+
+2.演示<span style="color:red">先创建外部表，然后移动数据</span>到LOCATION目录
+
+- 首先检查：`hadoop fs -ls /tmp`，确认不存在`/tmp/test_ext1`目录
+
+- 创建外部表：
+
+  ```hive
+  create external table test_ext1(id int, name string) row format delimited fields terminated by ‘\t’ location ‘/tmp/test_ext1’;
+  ```
+
+- 可以看到，目录`/tmp/test_ext1`被创建
+
+- ```hive
+  select * from test_ext1
+  ```
+
+  空结果，无数据
+
+- 上传数据： `hadoop fs -put test_external.txt /tmp/test_ext1/` 
+
+- ```hive
+  select * from test_ext1
+  ```
+
+  即可看到数据结果
+
+
+
+3.演示<span style="color:red">先存在数据，后创建外部表</span>
+
+- `hadoop fs -mkdir /tmp/test_ext2`
+
+- `hadoop fs -put test_external.txt /tmp/test_ext2/`
+
+- ```hive
+  create external table test_ext2(id int, name string) row format delimited fields terminated by ‘\t’ location ‘/tmp/test_ext2’;
+  ```
+
+- `select * from test_ext2;`
+
+
+
+##### ②删除外部表
+
+```hive
+drop table test_ext1;
+
+drop table test_ext2;
+```
+
+可以发现，在Hive中通过show table，表不存在了
+但是在HDFS中，数据文件<span style="color:red">依旧保留</span>
+
+
+
+
+
+##### ③内外部表转换
+
+Hive可以很简单的通过SQL语句转换内外部表。
+
+- 查看表类型：desc formatted stu;
+
+<img src="assets/dataDevAssets/2.hive%20database%20operation8.png" width="60%" style="display: block; margin: 0 auto;">
+
+
+
+转换
+
+- 内部表转外部表
+
+  ```hive
+  alter table stu set tblproperties('EXTERNAL'='TRUE');
+  ```
+
+- 外部表转内部表
+
+  ```hive
+  alter table stu set tblproperties('EXTERNAL'='FALSE');
+  ```
+
+  通过stu set tblproperties来修改属性
+
+  <span style="color:red">要注意：('EXTERNAL'='FALSE') 或 ('EXTERNAL'='TRUE')为固定写法，区分大小写！！！</span>
+
+
+
+
+
+外部表和其数据，是相互独立的，即：
+
+- 可以先有表后有数据
+- 也可以先有数据，后有表
+- 表和数据只是一个链接关系
+- 所以删除表，表不存在了但数据保留。
+
+
+
+#### 5.数据的加载和导出
+
+##### ①数据加载 
+
+**数据加载 -Load语法**
+
+我们使用 LOAD 语法，从外部将数据加载到Hive内，语法如下：
+
+<img src="assets/dataDevAssets/2.hive%20database%20operation9.png" width="70%" style="display: block; margin: 0 auto;">
+
+建表：
+
+```hive
+CREATE TABLE myhive.test_load(
+  dt string comment '时间（时分秒）', 
+  user_id string comment '用户ID', 
+  word string comment '搜索词',
+  url string comment '用户访问网址'
+) comment '搜索引擎日志表' ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t';
+```
+
+
+
+数据为:search.txt
+
+```
+00:00:01        1233215666      传智播客        http://www.itcast.cn
+00:50:00        2233216666      黑马程序员      http://www.itcast.cn
+01:06:00        3233217666      大数据  http://www.itcast.cn
+03:36:00        3233218666      hadoop  http://www.itcast.cn
+19:39:00        2233219666      python  http://www.itcast.cn
+21:26:00        1233211666      大数据开发      http://www.itcast.cn
+23:22:00        6233212666      itheima http://www.itcast.cn
+```
+
+
+
+加载 还是一样`local`代表从linux中加载,不加`local`代表从HDFS中加载
+
+```hive
+load data local inpath '/home/hadoop/search_log.txt' into table myhive.test_load;
+load data inpath '/tmp/search_log.txt' overwrite into table myhive.test_load;
+```
+
+> <span style="color:red">注意，基于HDFS进行load加载数据，源数据文件会消失（本质是被移动到表所在的目录中）</span>
+
+
+
+---
+
+**②数据加载 - INSERT SELECT 语法**
+
+除了`load`加载外部数据外，我们也可以通过SQL语句，从其它表中加载数据。
+
+语法：
+
+```hive
+INSERT [OVERWRITE | INTO] TABLE tablename1 [PARTITION (partcol1=val1, partcol2=val2 ...) [IF NOT EXISTS]] select_statement1 FROM from_statement;
+```
+
+将`SELECT`查询语句的结果插入到其它表中，被SELECT查询的表可以是内部表或外部表。
+
+示例：
+
+```hive
+INSERT INTO TABLE tbl1 SELECT * FROM tbl2;
+INSERT OVERWRITE TABLE tbl1 SELECT * FROM tbl2;
+```
+
+>  `INTO`          是追加, 如果是插入相同的目标,则在末尾追加
+>
+> `OVERWRITE` 是覆写,如果插入相同的目标,会覆盖旧有内容 
+>
+> 其中 `INSERT INTO TABLE tbl1 SELECT * FROM tbl2;`是查询结果插入,把 `tb2` 表里的所有数据，“拷贝”一份放入 `tb1` 表中。
+
+
+
+对于数据加载，我们学习了：LOAD和INSERT SELECT的方式，那么如何选择它们使用呢？
+
+- 数据在本地推荐 :
+
+  `load data local`加载
+
+- 数据在HDFS
+
+  - 如果不保留原始文件：	推荐使用LOAD方式直接加载
+
+  - 如果保留原始文件：	    推荐使用外部表先关联数据，然后通过INSERT SELECT 外部表的形式加载数据
+
+- 数据已经在表中只可以INSERT SELECT
+
+
+
+在这里关于不保留原始文件和保留原始文件做一些解释:
+
+**场景 A：使用 `LOAD DATA`（不保留原始文件）**
+
+当你执行：`LOAD DATA INPATH '/tmp/my_data/words.txt' INTO TABLE stu;`
+
+- **动作**：Hive 会直接调用 HDFS 的 `mv`（移动）命令。
+- **结果**：文件从 `/tmp/my_data/` 消失了，跑到了 `/user/hive/warehouse/myhive.db/stu/` 下面。
+- **代价**：原始路径空了，如果别的程序（比如 Spark 或 Flink）也要用这个文件，就找不到了。
+
+
+
+**场景 B：使用“外部表关联 + INSERT SELECT”（保留原始文件）**
+
+这是你问的重点，它分三步走：
+
+**第一步：创建外部表“关联”原始路径**
+
+```hive
+CREATE EXTERNAL TABLE t_ext(line string) 
+LOCATION '/tmp/my_data/'; -- 这里就是“关联”，只是登记了地址
+```
+
+- 此时，文件还在 `/tmp/my_data/`，没动。
+
+**第二步：创建正式的内部表（存放到仓库）**
+
+```hive
+CREATE TABLE t_final(line string); 
+```
+
+**第三步：通过 INSERT SELECT 搬运数据**
+
+```hive
+INSERT INTO TABLE t_final SELECT * FROM t_ext;
+```
+
+
+
+**核心逻辑**：`LOCATION` 相当于“标记”了 `t_ext`，
+
+- **对于外部表**：这个“标记”告诉 Hive：“这块地不是我的，我只是有个观察位（Metadata）。”
+- **所以**：当你对这个“标记”的表做任何操作时，Hive 的底层逻辑是 **“只读不写”**。它绝对不会去移动或删除这个路径下的原始文件。
+
+同时`INSERT SELECT` 这个动作本身就决定了它必须是**“复制”**。
+
+> **`LOAD DATA` 命令**：它的本质是 **“文件管理命令”**。它像是在 Linux 里执行 `mv`。为了效率，它直接把文件挪走。
+
+**`INSERT SELECT` 命令**：它的本质是 **“计算命令”**。
+
+- 它会启动 **MapReduce**。
+- **Map 阶段**：去 `t_ext` 标记的路径下**读取**（Read）每一行数据。
+- **Reduce 阶段**：把读到的数据加工后，**写入**（Write）到 `t_final` 对应的仓库路径下。
+- **结果**：读操作不会破坏原文件，写操作产生了新文件。所以，**客观上完成了“复制”**。
+
+
+
+这里有个很有意思的问题:**如果 `t_ext` 是内部表，执行 `INSERT SELECT` 会怎样？也就是为什么我们要创立外部表**
+
+假设 `t_ext` 也是一个**内部表**，你执行： `INSERT INTO TABLE t_final SELECT * FROM t_ext;`
+
+- **结果依然是：** 两个表里都有数据（复制）。
+- **差别在于：** 如果你接下来执行 `DROP TABLE t_ext`，因为它是内部表，它的那份数据就会被删掉。
+- **而如果是外部表：** 你删掉 `t_ext`，原始文件依然在。
+
+
+
+之所以“先建外部表关联”能保留原文件，最根本的原因在于：**外部表（External Table）在设计上放弃了对数据的“所有权（Ownership）”，它只保留了“使用权”。**
+
+
+
+在 Hive 的逻辑里：
+
+- **内部表（Managed Table）**：Hive 认为这块数据是它“家”里的。既然是家里的东西，它有权把文件从别处**搬进**自己家（`LOAD` 操作），或者在不需要时把东西**扔掉**（`DROP` 操作）。
+
+- **外部表（External Table）**：Hive 认为这块数据是“邻居”家或者“公共仓库”里的。建表语句里的 `LOCATION` 实际上是在说：**“喂，Hive，那儿有一堆数据，你以后查这张表时，就去那个地址看一眼，别乱动人家的东西。”**
+
+  
+
+​      当你执行 `CREATE EXTERNAL TABLE ... LOCATION '/tmp/data'` 时：Hive 没有任何移动文件的动作。它只是在 MySQL 的元数据库里登记了一下：表名 t2 对应路径 `/tmp/data`。
+
+
+
+**结果**：
+
+1. 原始文件 `words.txt` 依然在 `/tmp/my_data/`（**保留了原始文件**）。
+2. 仓库里多了一份经过处理的数据（**完成了加载**）。
+
+
+
+##### **②数据导出**
+
+**数据导出 - insert overwrite 方式**
+
+将hive表中的数据导出到其他任意目录，例如linux本地磁盘，例如hdfs，例如mysql等等
+
+语法：
+
+```hive
+insert overwrite [local] directory ‘path’ select_statement1 FROM from_statement;
+```
+
+将查询的结果导出到本地 - 使用默认列分隔符:
+
+```hive
+insert overwrite local directory '/home/hadoop/export1' select * from test_load ;
+```
+
+将查询的结果导出到本地 - 指定列分隔符
+
+```hive
+insert overwrite local directory '/home/hadoop/export2' row format delimited fields terminated by '\t' select * from test_load;
+```
+
+将查询的结果导出到HDFS上(不带local关键字)
+
+```hive
+insert overwrite directory '/tmp/export' row format delimited fields terminated by '\t' select * from test_load;
+```
+
+
+
+**hive表数据导出 - hive shell**
+
+基本语法：（hive -f/-e 执行语句或者脚本 > file）
+
+直接在命令行里写sql然后>导出
+
+```shell
+bin/hive -e "select * from myhive.test_load;" > /home/hadoop/export3/export4.txt
+```
+
+另一种是把sql命令vim到文件(export.sql)里,然后>导出,效果一样,只不过可预见的写入到文件里拓展性和上制更高
+
+```shell
+bin/hive -f export.sql > /home/hadoop/export4/export4.txt
+```
+
+
+
+##### ③特别内容:`>`
+
+另外再总结一下导出`>`
+
+在 Linux 中，每一个运行的程序默认都会打开三个“管道”。你提到的数字其实是**文件描述符 (File Descriptor)**：
+
+| **符号** | **描述**     | **名称** | **作用**                                   |
+| -------- | ------------ | -------- | ------------------------------------------ |
+| **`0>`** | 标准输入     | `stdin`  | 比如你键盘输入的内容。                     |
+| **`1>`** | **标准输出** | `stdout` | 程序正常运行产生的结果（默认显示在屏幕）。 |
+| **`2>`** | **标准错误** | `stderr` | 程序报错时的信息（默认也显示在屏幕）。     |
+
+常用组合技：
+
+- **`>` (等同于 `1>`)**：**覆盖**重定向。把正常结果存入文件，报错信息依然吐在屏幕上。
+- **`>>`**：**追加**重定向。不删除旧内容，在文件末尾续写。
+- **`2>`**：**错误**重定向。只把报错信息存入文件。
+- **`&>`**：**全都要**。把正常结果和报错信息通通存入同一个文件。
+- **`1> a.txt 2> b.txt`**：**各回各家**。正常结果去 a，报错去 b。
+
+> **关于 `3>`**：在 Linux 中，3-9 是预留给用户自定义的描述符。在大数据开发中几乎用不到，通常是写复杂脚本时用来做特殊的临时管道。
+
+
+
+##### 总结
+
+**为什么要加载数据而非使用外部表？**
+
+- 外部表是临时使用的，重要数据建议存入内部表进行管理
+
+**加载数据的语法**:
+
+- `LOAD DATA [LOCAL] INPATH 'filepath' [OVERWRITE] INTO TABLE tablename;`
+- `INSERT INTO|OVERWRITE SELECT...`
+
+**注意事项**：
+使用LOAD语句：
+
+- 数据来源本地，本地数据文件会保留，本质是本地文件上传到
+- HDFS据来自HDFS，加载后文件不存在，本质是在HDFS上进行文件移动
+
+
+
+**Hive数据导出的方式:**
+
+- `INSERT [LOCAL] SELECT`
+- `bin/hive -e 'SQL' > file`
+- `bin/hive -f ‘sql file’ > file`
+
+
+
+### 3.分区表
+
+在大数据中，最常用的一种思想就是分治，我们可以把大的文件切割划分成一个个的小的文件，这样每次操作一个小的文件就会很容易了
+
+同样的道理，在hive当中也是支持这种思想的，就是我们可以把大的数据，按照每天，或者每小时进行切分成一个个的小的文件，这样去操作小的文件就会容易得多了。
+
+**分区表 (Partitioned Table)** 也是 Hive 的“加速器”。
+
+
+
+**为什么要分区？（解决“全表扫描”的痛苦）**
+
+想象你有一个存了 10 年记录的表 `stu`，数据量有 100TB。
+
+- **没有分区**：如果你只想看“昨天”的数据，Hive 必须把 10 年的数据**全部读一遍**，然后过滤出昨天的。这就像是在一个堆满 10 年报纸的房间里找昨天的头条，你会疯掉，集群也会被你跑死。
+- **有了分区**：Hive 会把 10 年的数据分成 3650 个“小文件夹”。查询时，Hive 直接跳过其他文件夹，只读昨天的那个。这就是**分区裁剪 (Partition Pruning)**。
+
+![2.hive database operation10](assets/dataDevAssets/2.hive database operation10.png)
+
+**物理本质：分区 = HDFS 子目录**
+
+这是理解分区最直接的方法。在 Hive 里，一个分区对应的就是一个 **HDFS 目录**。
+
+假设你创建了一个按月分区的表：
+
+```hive
+CREATE TABLE order_monthly (
+    order_id string,
+    price double,
+    user_id string
+)
+PARTITIONED BY (month string)  -- 分区字段
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t';
+```
+
+你在 HDFS 看到的目录结构长这样：
+
+
+> `/user/hive/warehouse/score/month=2026-01/`
+>
+> `/user/hive/warehouse/score/month=2026-01/`
+
+ 
+
+#### 1. 分区表的关键语法
+
+##### A. 创建分区表
+
+注意：分区字段（如 `dt`）**千万不要**出现在 `CREATE TABLE` 的普通字段列表里，它定义在 `PARTITIONED BY` 中。
+
+```hive
+CREATE TABLE stu_partition (id int, name string) 
+PARTITIONED BY (month string);
+```
+
+##### B. 加载数据（静态分区）
+
+你需要手动告诉 Hive，这批数据属于哪个“文件夹”。
+
+```hive
+LOAD DATA LOCAL INPATH '/home/hadoop/words.txt' 
+INTO TABLE stu_partition PARTITION (month='202602');
+```
+
+##### C. 查询数据（性能飞跃的关键）
+
+查询时必须带上分区字段作为过滤条件，否则依然会全表扫描。
+
+```hive
+SELECT * FROM stu_partition WHERE month = '202602';
+```
+
+
+
+静态分区 vs. 动态分区
+
+**动态分区的“坑”：** 默认为了防止你一下子创建几万个文件夹把 NameNode 搞死，动态分区是关闭或受限的。开启它需要设置
+
+```shell
+SET hive.exec.dynamic.partition=true; -- 开启动态分区
+SET hive.exec.dynamic.partition.mode=nonstrict; -- 允许所有分区都是动态的
+```
+
+
+
+#### 2.动态分区
+
+##### 介绍
+
+**静态分区**（手动指定 `month='202006'`），**动态分区 (Dynamic Partitioning)** 会更加便利,类似于自动分拣机。
+
+| **特性**     | **静态分区 (Static)**                             | **动态分区 (Dynamic)**                               |
+| ------------ | ------------------------------------------------- | ---------------------------------------------------- |
+| **决定权**   | **你(开发者)**（在 SQL 里写死：`month='202006'`） | **数据本身**（根据某列的值自动分目录）               |
+| **操作命令** | `LOAD DATA` 或 `INSERT`                           | **只能用 `INSERT SELECT`**                           |
+| **适用场景** | 每天处理一份确定的数据（如：昨天的日志）          | 历史数据全量入库（比如把 10 年的数据一次性按月分好） |
+
+
+
+为了防止新手不小心创建了几万个小文件夹导致 NameNode 崩溃，Hive 默认把动态分区管得很严。你想用，必须先执行这两行“口令”：
+
+```shell
+-- 1. 开启总开关
+SET hive.exec.dynamic.partition=true;
+
+-- 2. 设置为非严格模式 (nonstrict)
+-- 默认是 strict（严格），要求至少有一个静态分区。
+-- 设置为 nonstrict，表示允许所有分区字段都是动态的。
+SET hive.exec.dynamic.partition.mode=nonstrict;
+```
+
+
+
+##### 实战演示
+
+假设你有一个**临时表** `score_temp`，里面存了 3 个月的数据，长这样：
+
+| **id** | **name** | **score** | **dt_col** |
+| ------ | -------- | --------- | ---------- |
+| 1      | 周杰伦   | 99        | 202005     |
+| 2      | 林俊杰   | 88        | 202006     |
+| 3      | 王力宏   | 77        | 202007     |
+
+你想把这些数据插到你的**分区表** `score` 里，让它自动进对应的文件夹。
+
+**错误的直觉：** 你可能会想用 `LOAD DATA`。
+
+- **真相**：`LOAD DATA` 只是搬运文件，它不会去读文件内容，所以**无法**实现动态分区。
+
+**正确的姿势：使用 `INSERT SELECT`**
+
+```hive
+INSERT OVERWRITE TABLE score PARTITION (month) -- 这里只写字段名，不写具体的值
+SELECT id, name, score, dt_col -- 重点：分区字段必须放在 SELECT 的最后一列！
+FROM score_temp;
+```
+
+
+
+##### 规则
+
+**同时有一些规则也是需要注意的:**
+
+**位置决定论**： Hive 是根据 `SELECT` 语句中**最后一列**的值来决定分区的，而不是根据列名。
+
+- 哪怕你的最后一列叫 `abc`，只要它的值是 `202005`，Hive 就会把它丢进 `month=202005` 文件夹。
+
+**自动创建目录**： 如果 `SELECT` 出来的月份在 HDFS 里还没目录，Hive 会自动帮你 `mkdir`。
+
+**性能压力**： 如果你的数据里有 1000 个不同的月份，这个任务会同时打开 1000 个文件写入流，非常消耗内存。
+
+
+
+##### **使用场景**
+
+在标准的生产环境中，静态分区和动态分区并不是非黑即白的选择，它们通常是“组合拳”,
+
+**1. 静态分区 (Static)：**
+
+**核心场景：每日增量离线加工。** 这是大数据开发中最常见的场景。比如每天凌晨 1 点，跑昨天的经营数据。
+
+- **为什么用静态？**
+  - **可控性极高**：你在脚本里明确知道今天要处理的是 `2026-02-20` 的数据。
+  - **效率最高**：不需要 Hive 去扫描整份数据来判断该往哪投递，直接对准那个“坑”就灌进去。
+- **生产实战：** 通常配合 **Shell 脚本** 或 **调度工具（如 Airflow, DolphinScheduler）** 使用。
+
+```shell
+# 脚本中的伪代码
+today=$(date -d "yesterday" +%Y%m%d)
+hive -e "LOAD DATA LOCAL INPATH '...' INTO TABLE score PARTITION (dt='$today')"
+```
+
+
+
+------
+
+**2.动态分区 (Dynamic)：**
+
+**核心场景 A：历史数据一次性补录 (Backfill)。** 老板突然说：“把过去 3 年的 Excel 成绩单全部导进 Hive。”
+
+- **痛点**：如果你用静态，你要写 1000 多个 `LOAD` 语句（每天一个）。
+- **解法**：先把 3 年数据传到一个临时表，然后一个**动态分区 `INSERT`**，Hive 自动按数据里的日期分好 1000 个目录。
+
+**核心场景 B：数据流中包含多个分区的数据。** 比如一个埋点日志流，虽然是今天收到的，但里面可能混杂了前天因为网络延迟刚传回来的数据。
+
+- **解法**：通过动态分区，让数据根据自己的时间戳“各回各家”，避免前天的数据被误存在今天的目录下。
+
+
+
+
+
+#### **3. 分区表的“坑”与避坑指南**
+
+在生产中，随意使用动态分区可能会导致集群崩溃（尤其是 OOM 或 NameNode 压力过大）。以下是职业选手的操作规范：
+
+1. **限制分区总数**： 设置 `hive.exec.max.dynamic.partitions=1000;`。如果你的 SQL 尝试一次性创建 1 万个分区，Hive 会直接“自杀”报错，保护集群不被你搞死。
+
+2. **强制开启 `DISTRIBUTE BY`**： 在执行动态分区 `INSERT` 时，最好在 SQL 最后加上 `DISTRIBUTE BY 分区字段`。
+
+   - **作用**：让相同的分区数据流向同一个 Reducer，这样每个 Reducer 只会打开一个文件句柄。否则，如果每个 Reducer 都写 1000 个分区，文件句柄数会瞬间爆炸。
+
+3. **严格模式 (Strict Mode)**： 虽然我们实验时用了 `nonstrict`，但生产环境有些公司强行要求 `strict`。即：**必须指定一个静态分区，剩下的再动态。**
+
+   ```hive
+   -- 比如：年份是定的（静态），月份是变的（动态）
+   INSERT INTO table_name PARTITION (year='2026', month) 
+   SELECT ..., month_col FROM tmp;
+   ```
