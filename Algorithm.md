@@ -514,7 +514,9 @@ int index = arr.indexOf(666);
 
 ## 环形数组原理
 
-上面介绍了基本概念,那么我们来看看原理,其实也属于上面的概念扩展
+上面介绍了基本概念,那么我们来看看原理,其实也属于上面的概念扩展,需要强调的是:<span style="color:red">这里物理上本质永远都是普通数组,不存在一个叫做环形数组的单独构型,所以我们讨论的**环形数组**这个概念是逻辑上的,体现在size的取模上</span>
+
+### 概念再次强化
 
 首先数组可能是环形的么？不可能。数组就是一块线性连续的内存空间，怎么可能有环的概念？
 
@@ -561,7 +563,7 @@ while (i < arr.length) {
 
 
 
-核心原理
+**核心原理**
 
 上面只是让大家对环形数组有一个直观地印象，环形数组的关键在于，它维护了两个指针 `start` 和 `end`，`start` 指向第一个有效元素的索引，`end` 指向最后一个有效元素的下一个位置索引。
 
@@ -571,9 +573,214 @@ while (i < arr.length) {
 
 
 
+###  动手环节
+
+纸上得来终觉浅，绝知此事要躬行。
+
+> 关键点、注意开闭区间
+>
+> 在我的代码中，环形数组的区间被定义为左闭右开的，即 `[start, end)` 区间包含数组元素。所以其他的方法都是以左闭右开区间为基础实现的。
+>
+> 那么肯定就会有读者问，为啥要左闭右开，我就是想两端都开，或者两端都闭，不行么？
+>
+> 在 [滑动窗口算法核心框架](https://labuladong.online/zh/algo/essential-technique/sliding-window-framework/) 中定义滑动窗口的边界时也会有类似的问题，这里我也解释一下。
+>
+> **理论上，你可以随意设计区间的开闭，但一般设计为左闭右开区间是最方便处理的**。
+>
+> 因为这样初始化 `start = end = 0` 时，区间 `[0, 0)` 中没有元素，但只要让 `end` 向右移动（扩大）一位，区间 `[0, 1)` 就包含一个元素 `0` 了。
+>
+> 如果你设置为两端都开的区间，那么让 `end` 向右移动一位后开区间 `(0, 1)` 仍然没有元素；
+> 例如如果你想包含“0号”这个元素,得把 `end` 挪到 `1`，变成 `(0, 1)`。但是 `end` 永远比你实际想要的元素大，而 `start` 永远比你想要的元素小。这种“两头够不着”的感觉会让逻辑变得极其混乱。
+>
+> 如果你设置为两端都闭的区间，那么初始区间 `[0, 0]` 就已经包含了一个元素。为了表示“空仓库”，你不得不把 `end` 设为 `-1`（即 `[0, -1]`）。
+>
+> 这两种情况都会给边界处理带来不必要的麻烦，如果你非要使用的话，需要在代码中做一些特殊处理。
+
+最后，请看代码实现：
+
+```java
+public class CycleArray<T> {
+    private T[] arr;
+    private int start;
+    private int end;
+    private int count;
+    private int size;
+
+    //可以不写无参,但是这样每次都必须写一个确定的值类似于new CycleArray(10)
+    //所以不如写了无参但是让有参处理一个默认的初始值 用户直接写 new CycleArray(),然后系统自动给个默认值
+    public CycleArray() {
+        //这里因为1是int类型所以就会自动丢给底下的有参(int size)处理,写1是最小默认,节省地方,想写10 1000(太占地方了)都可以
+        this(1);
+    }
+
+    public CycleArray(int size) {
+        this.size = size;
+        this.arr = (T[]) new Object[size];
+        this.start = 0;
+        this.end = 0;
+        this.count = 0;
+    }
+
+
+    // 自动扩缩容辅助函数
+    private void resize(int newSize){
+        T[] newArr = (T[])new Object[newSize];
+        for (int i = 0; i < count; i++) {
+            //这里还用取模是因为 可以跳到 [ E, _, B, C, D ] 里的E所在的地方,
+            // 从而形成新的[ B, C, D, E, _, _, _, _, _, _ ]
+            newArr[i] = arr[(start+i)%size];
+        }
+        arr = newArr;
+        start = 0;
+        end = count;
+        size = newSize;
+
+    }
+
+
+    public void addFirst(T val){
+        if(isFull()){
+            resize(size*2);
+        }
+        //左边是闭区间,然后往前插入,就要-1
+        start = (start-1+size)%size;
+        arr[start] = val;
+        count++;
+    }
+
+    public void removeFirst(){
+        if (isEmpty()){
+            throw new IllegalStateException("Array is empty");
+        }
+        arr[start] = null;
+        start = (start + 1 + size)%size;
+        count --;
+        // 如果数组元素数量减少到原大小的四分之一，则减小数组大小为一半
+        if (count>0 && count == size/4){
+            //这里的count>0是防止数组刚产生就会为0,举例count为0,size为3,此时不加>0就会直接触发 因为resize(这时条件只有count==3/4)而3/4会变成0满足
+            //resize里的参数会变成新的size,于是此时size为0,而取模运算中size会作为分母,分母为0会触发ArithmeticException: / by zero。
+            resize(size/2);
+        }
+
+    }
+
+    // 获取数组头部元素，时间复杂度 O(1)
+    public T getHead(){
+        if (isEmpty()){
+            throw new IllegalStateException("Array is empty");
+        }
+
+        return arr[start];
+    }
+
+    public T getLast(){
+        if (isEmpty()){
+            throw new IllegalStateException("Array is empty");
+        }
+        return arr[(end-1+size)%size];
+    }
+
+
+    public void addLast(T val){
+        if(isFull()){
+            resize(size*2);
+        }
+        // 因为 end 是开区间，所以是先赋值，再右移
+        arr[end] = val;
+        end = (end + 1 )%size;
+        count++;
+    }
+
+    public void removeLast(){
+        if (isEmpty()){
+            throw new IllegalStateException("Array is empty");
+        }
+        end = (end-1 +size)%size;
+        arr[end] = null;
+        count--;
+        if (count> 0 && count==size/4){
+            resize(size/2);
+        }
+    }
+
+
+    public boolean isEmpty() {
+        return count==0;
+    }
+
+    public boolean isFull() {
+        return count == size;
+    }
+}
+```
+
+再次强调,<span style="color:red">这里物理上永远都是普通数组,而**环形数组**这个概念是逻辑上的,体现在size的取模上,而resize是一个大洗牌保证了扩展后start和end会回到我们期望构想的环形两端</span>
 
 
 
+### 思考题
+
+数组增删头部元素的效率真的只能是$ O(N)$么？
+
+我们都说，在数组增删头部元素的时间复杂度是 O(N)*O*(*N*)，因为需要搬移元素。但是，如果我们使用环形数组，其实是可以实现在 $O(1)$ 的时间复杂度内增删头部元素的。
+
+当然，上面实现的这个环形数组只提供了 `addFirst, removeFirst, addLast, removeLast` 这几个方法，并没有提供 [我们之前实现的动态数组](https://labuladong.online/zh/algo/data-structure-basic/array-implement/) 的某些方法，比如删除指定索引的元素，获取指定索引的元素，在指定索引插入元素等等。
+
+但是你可以思考一下，难道环形数组实现不了这些方法么？环形数组实现这些方法，时间复杂度相比普通数组，有退化吗？
+
+好像没有吧。
+
+环形数组也可以删除指定索引的元素，也要做数据搬移，和普通数组一样，复杂度是 O(N)*O*(*N*)；
+
+环形数组也可以获取指定索引的元素（随机访问），只不过不是直接访问对应索引，而是要通过 `start` 计算出真实索引，但计算和访问的时间复杂度依然是 $O(1)$；
+
+环形数组也可以在指定索引插入元素，当然也要做数据搬移，和普通数组一样，复杂度是 $O(N)$。
+
+你可以思考一下是不是这样。如果是这样，为什么编程语言的标准库中提供的动态数组容器底层并没有用环形数组技巧。
+
+> 答:
+> ①环形数组的每一次 `get(i)` 都要做加法和取模运算。而 `ArrayList` 的核心使命是**极致的随机访问速度**。为了一个不常用的“删头”操作，去拖慢全世界所有 `get` 操作的速度，在工程上是不划算的。
+>
+> ②普通数组的数据在物理内存上是绝对线性连续的，CPU 预取数据时非常开心。环形数组如果发生了“绕回”，数据在逻辑上连续但在物理上跳跃，这会对 **CPU 缓存命中率** 产生微小的负面影响。
+>
+> 假设物理数组长度为 5，地址从 `100` 到 `116`。目前里面存了 `A, B, C, D` 四个元素，且发生了“绕回”：
+>
+> **物理存储状况：**
+>
+> - 索引 0：`D` (地址 **100**) —— 这是逻辑上的**末尾**
+> - 索引 1：`空` (地址 **104**)
+> - 索引 2：`A` (地址 **108**) —— 这是逻辑上的**开头** (start)
+> - 索引 3：`B` (地址 **112**)
+> - 索引 4：`C` (地址 **116**)
+>
+> **当你按顺序读取（A -> B -> C -> D）时：**
+>
+> 1. 读取 A：访问地址 **108**
+> 2. 读取 B：访问地址 **112** (递增 +4)
+> 3. 读取 C：访问地址 **116** (递增 +4)
+> 4. 读取 D：**跳跃！** 访问地址 **100** (从高地址**猛地跳回**低地址)
+>
+> ③标准库的设计原则是：**“让简单的东西保持简单”**。
+>
+> - 如果你想要最快的索引访问，用 `ArrayList`。
+> - 如果你想要最快的双端增删，用 `ArrayDeque`（它的底层就是你刚才写的环形数组）。
+
+### 实际场景
+
+#### A. 实现队列 (FIFO)
+
+这是最常见的场景。比如银行排队系统、任务调度系统。因为队列需要不断从头部取数据，如果用普通数组，系统会因为不断的搬运数据而卡死。
+
+#### B. 环形缓冲区 (Ring Buffer) —— 高级进阶
+
+在高性能领域（如**音频流处理、网络数据包接收、日志系统**），环形数组是唯一的王者 。
+
+- **逻辑：** 设定一个固定大小的圆环。新数据不断进来，老数据不断被覆盖。
+- **优点：** 永远不需要 `resize`，永远不需要搬运数据，空间利用率极高。
+
+#### C. 滑动窗口算法
+
+比如你要计算“最近 10 分钟的平均股价”。你可以用一个长度为 10 的环形数组，每过一分钟存一个新价格，顶掉最老的那个。
 
 
 
