@@ -1319,7 +1319,7 @@ hive -e "LOAD DATA LOCAL INPATH '...' INTO TABLE score PARTITION (dt='$today')"
 
 #### **3. 分区表的“坑”与避坑指南**
 
-在生产中，随意使用动态分区可能会导致集群崩溃（尤其是 OOM 或 NameNode 压力过大）。以下是职业选手的操作规范：
+在生产中，随意使用动态分区可能会导致集群崩溃（尤其是 OOM 或 `NameNode` 压力过大）。以下是职业选手的操作规范：
 
 1. **限制分区总数**： 设置 `hive.exec.max.dynamic.partitions=1000;`。如果你的 SQL 尝试一次性创建 1 万个分区，Hive 会直接“自杀”报错，保护集群不被你搞死。
 
@@ -1347,7 +1347,7 @@ hive -e "LOAD DATA LOCAL INPATH '...' INTO TABLE score PARTITION (dt='$today')"
 
 
 
-![2.hive database operation11](../assets/dataDevAssets/2.hive database operation11.png)
+<img src="../assets/dataDevAssets/2.hive%20database%20operation11.png" width="75%" style="display: block; margin: 0 auto;">
 
 
 
@@ -1606,13 +1606,13 @@ hdfs dfs -ls /user/hive/warehouse/myhive.db/course
 
 比如我们想过滤某个值,那么根据hash取余就能锁定在对应的文件里,而排除其他可能,如果分桶有3个,排除67%的数据,如果有10个,那就一下子派出了90%的数据
 
-![2.hive database operation12](../assets/dataDevAssets/2.hive database operation13.png)
+!<img src="../assets/dataDevAssets/2.hive%20database%20operation13.png" width="75%" style="display: block; margin: 0 auto;">
 
 
 
 **基于分桶列,进行双表join**
 
-![2.hive database operation12](../assets/dataDevAssets/2.hive database operation14.png)
+<img src="../assets/dataDevAssets/2.hive%20database%20operation14.png" width="75%" style="display: block; margin: 0 auto;">
 
 也是可以快速锁定没这也是我们前文提到过的A. 极速 Join：SMB Join (Sort Merge Bucket Join)
 
@@ -1740,6 +1740,8 @@ zhangsan	| beijing,shanghai,tianjin,hangzhou
 wangwu		| changchun,chengdu,wuhan,beijin
 ```
 
+
+
 可以使用array数组类型，存储locations的数据建表语句：
 
 ```hive
@@ -1749,4 +1751,333 @@ COLLECTION ITEMS TERMINATED BY ',';
 ```
 
 - `row format delimited fields terminated by '\t'` 表示列分隔符是\t
-- `COLLECTION ITEMS TERMINATED BY ','` 表示集合（array）元素的分隔符是逗号
+- `COLLECTION ITEMS TERMINATED BY ','` 表示集合（array）元素的分隔符是逗号 
+
+
+
+由于数组的特性,我们可以通过下标查看对应内容
+
+```hive
+SELECT name,localtions[0] FROM test_array; 
+```
+
+
+
+同时通过`SIZE()`可以查看数组的大小
+
+```hive
+SELECT name,size(test_array.work_locations) FROM test_array;
+```
+
+
+
+如果想看数组里面有没有我们想要的内容,那么需要通过关键字`ARRAY_CONTAINS()`来完成
+
+```hive
+SELECT name FROM test_array WHERE array_contains(work_locations,'tianjin');
+```
+
+
+
+#### 7.2 Map类型
+
+**建表语句**
+
+```hive
+CREATE TABLE test_map(
+    id INT,name STRING,members MAP<STRING,STRING>,age INT
+)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY ',' COLLECTION ITEMS TERMINATED BY '#'
+MAP KEYS TERMINATED BY ':'
+```
+
+```
+id,name,members,age
+1 | zhangsan,father:xiaoming#mother:xiaohuang#brother:xiaoxu,28
+2 | lisi,father:mayun#mother:huangyi#brother:guanyu,22
+3 | wangwu,father:wangjianlin#mother:ruhua#sister:jingtian,29
+4 | mayun,father:mayongzhen#mother:angelababy,26
+```
+
+<img src="../assets/dataDevAssets/2.hive%20database%20operation15.png" width="75%" style="display: block; margin: 0 auto;">
+
+想要查看对应的value:
+
+```hive
+SELECT name,members['father'],members['mother'] FROM test_map;
+```
+
+```
+name   _c1    _c2
+林杰均 |林大明  |小甜甜 
+周杰伦 |马小云  |黄大奕
+王葱   |王林   |如花
+马大云 |周街轮  |美美
+```
+
+
+
+取出map的所有key和values
+
+```hive
+SELECT name,map_keys(test_map.members) FROM test_map;
+
+SELECT name,map_values(test_map.members) FROM test_map;
+```
+
+
+
+而`SIZE()`也可以发现数量
+
+```hive
+SELECT size(test_map.members) FROM myhive.test_map;
+```
+
+
+
+`array_contains`的妙用,由于我们不能直接把members往`array_contains`里丢,所以我们可以曲线救国,用key来搜索sister
+
+```HIVE
+SELECT * FROM test_map WHERE array_contains(map_keys(members),'sister');
+
+--value同理
+SELECT * FROM test_map WHERE array_contains(map_values(mebers),'王林');
+```
+
+
+
+#### 7.3 Struct类型
+
+struct类型是一个复合类型，可以在一个列中存入多个子列，每个子列允许设置类型和名称有如下数据文件，说明：字段之间#分割，struct之间冒号分割
+
+```
+int#array
+1#周杰轮:11
+2#林均杰:16
+3#刘德滑:21
+4#张学油:26
+5#蔡依临:23
+```
+
+> 也可以用**`MAP` ,但是局限**：`MAP<K, V>` 要求所有的 Value 必须是**同一种类型**。
+>
+> - 在你的数据里，姓名是 `STRING`，年龄是 `INT`。
+> - 如果你用 `MAP`，你只能定义为 `MAP<STRING, STRING>`。这意味着你想算平均年龄时，必须写：`CAST(info['age'] AS INT)`。
+>
+> **`STRUCT` 的优势**：它可以给每个字段定义**独立的类型**。
+>
+> - `STRUCT<id:INT, name:STRING, age:INT>`。
+> - 计算时直接 `info.age` 即可，性能更高，代码更简洁。
+>
+> 
+>
+> ### 1. ARRAY 的例子：像“购物清单”
+>
+> **定义：** `foods ARRAY<STRING>`（菜品列表）
+>
+> - **第一行数据（张三）：** `回锅肉,米饭,可乐`
+> - **第二行数据（李四）：** `大披萨,鸡翅,薯条,冰淇淋,意面,沙拉`
+>
+> ### 2. MAP 的例子：像“贴标签”
+>
+> **定义：** `scores MAP<STRING, INT>`（学科:成绩）
+>
+> - **第一行数据（小明）：** `数学:90#语文:80`
+> - **第二行数据（小红）：** `数学:95#语文:85#英语:100#物理:99#化学:98`
+>
+> ### 3. STRUCT 的例子：像“填表格”
+>
+> **定义：** `address STRUCT<city:STRING, street:STRING>`（地址：城市，街道）
+>
+> - **第一行数据（张三）：** `北京:长安街`
+> - **第二行数据（李四）：** `上海:南京路:101号`
+>
+> 我们发现只有3是写死的,所以会说MAP和Array会更加灵活
+
+
+
+**建表语句**
+
+```java
+create table myhive.test_struct(
+id string, info struct<name:string, age:int>
+)
+row format delimited
+fields terminated by '#'
+COLLECTION ITEMS TERMINATED BY ':';
+```
+
+<img src="../assets/dataDevAssets/2.hive%20database%20operation16.png" width="45%" style="display: block; margin: 0 auto;">
+
+**基本查询**
+
+```hive
+select * from hive_struct;
+# 直接使用列名.子列名 即可从struct中取出子列查询
+select ip, info.name from hive_struct;
+```
+
+
+
+总结
+
+1. struct类型，主要存储：复合格式
+
+可以包含多个二级列，二级列支持列名和类型，
+
+如“a”: 1, “b”: “foo”, “c”: “2000-01-01”
+
+2. 定义格式：
+   - `struct<name:string, age:int>`
+   - struct的分隔符只需要：`COLLECTION ITEMS TERMINATED BY` '分隔符' 只需要分隔数据即可（数据中不记录key，key是建表定义的固定的）
+3. 在查询中使用`struct.key` 即可取得对应的`value`
+
+| **类型** | **定义**                            | **示例**                                                     | **内含元素类型**                | **元素个数**               | **取元素**                        | **可用函数**                                                 |
+| -------- | ----------------------------------- | ------------------------------------------------------------ | ------------------------------- | -------------------------- | --------------------------------- | ------------------------------------------------------------ |
+| array    | array<类型>                         | 如定义为array<int>数据为：1,2,3,4,5                          | 单值，类型取决于定义            | 动态，不限制               | array[数字序号]序号从0开始        | size统计元素个数array_contains判断是否包含指定数据           |
+| map      | map<key类型, value类型>             | 如定义为：map<string, int>数据为：{’a’: 1, ‘b’: 2, ‘c’: 3}   | 键值对，K-V，K和V类型取决于定义 | 动态，不限制               | map[key] 取出对应key的value       | size统计元素个数array_contains判断是否包含指定数据map_keys取出全部key，返回arraymap_values取出全部values，返回array |
+| struct   | struct<子列名 类型, 子列名 类型...> | 如定义为：struct<c1 string, c2 int, c3 date>数据为：’a’, 1, ‘2000-01-01’ | 单值，类型取决于定义            | 固定，取决于定义的子列数量 | struct.子列名通过子列名取出子列值 | 暂无                                                         |
+
+# Ⅲ数据查询
+
+## 一、基本查询
+
+查询语句的基本语法整体上和普通SQL差不多，部分有区别
+
+如：CLUSTER BY、DISTRIBUTE BY、SORT BY等这些我们会放入到高阶原理章节进行讲解。
+
+准备数据：订单表
+
+```hive
+CREATE DATABASE itheima;
+USE itheima;
+CREATE TABLE itheima.orders (
+    orderId bigint COMMENT '订单id',
+    orderNo string COMMENT '订单编号',
+    shopId bigint COMMENT '门店id',
+    userId bigint COMMENT '用户id',
+    orderStatus tinyint COMMENT '订单状态 -3:用户拒收 -2:未付款的订单 -1：用户取消 0:待发货 1:配送中 2:用户确认收货',
+    goodsMoney double COMMENT '商品金额',
+    deliverMoney double COMMENT '运费',
+    totalMoney double COMMENT '订单金额（包括运费）',
+    realTotalMoney double COMMENT '实际订单金额（折扣后金额）',
+    payType tinyint COMMENT '支付方式,0:未知;1:支付宝，2：微信;3、现金；4、其他',
+    isPay tinyint COMMENT '是否支付 0:未支付 1:已支付',
+    userName string COMMENT '收件人姓名',
+    userAddress string COMMENT '收件人地址',
+    userPhone string COMMENT '收件人电话',
+    createTime timestamp COMMENT '下单时间',
+    payTime timestamp COMMENT '支付时间',
+    totalPayFee int COMMENT '总支付金额'
+) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t';
+LOAD DATA LOCAL INPATH '/home/hadoop/itheima_orders.txt' INTO TABLE itheima.orders;
+ 
+
+```
+
+这是一张订单销售表，我们基于此表，做一下简单的Hive基本查询
+
+![2.hive database operation17](../assets/dataDevAssets/2.hive database operation17.png)
+
+准备数据：用户表
+
+
+```hive
+CREATE TABLE itheima.users (
+    userId int,
+    loginName string,
+    loginSecret int,
+    loginPwd string,
+    userSex tinyint,
+    userName string,
+    trueName string,
+    brithday date,
+    userPhoto string,
+    userQQ string,
+    userPhone string,
+    userScore int,
+    userTotalScore int,
+    userFrom tinyint,
+    userMoney double,
+    lockMoney double,
+    createTime timestamp,
+    payPwd string,
+    rechargeMoney double
+) ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t';
+
+```
+
+### **SELECT 基本查询**
+
+查询所有
+
+```hive
+SELECT * FROM itheima.orders;
+```
+
+查询单列
+
+```hive
+SELECT orderid, totalmoney, username, useraddress, paytime FROM itheima.orders;
+```
+
+查询数据量
+
+```hive
+SELECT COUNT(*) FROM itheima.orders;
+```
+
+过滤广东省订单
+
+```hive
+SELECT * FROM itheima.orders WHERE useraddress LIKE '%广东%';
+```
+
+找出广东省单笔营业额最大的订单
+
+```hive
+SELECT * FROM itheima.orders WHERE useraddress like '%广东%' ORDER BY totalmoney DESC LIMIT 1;
+```
+
+---
+
+### **分组、聚合**
+
+统计未支付、已支付各自的人数
+
+```hive
+SELECT ispay, COUNT(*) AS cnt FROM itheima.orders GROUP BY ispay;
+```
+
+在已付款订单中，统计每个用户最高的一笔消费金额
+
+```hive
+SELECT userid, MAX(totalmoney) AS max_money FROM itheima.orders WHERE ispay = 1 GROUP BY userid;
+```
+
+统计每个用户的平均订单消费额
+
+```hive
+SELECT userid, AVG(totalmoney) FROM itheima.orders GROUP BY userid;
+```
+
+统计每个用户的平均订单消费额，过滤大于10000的数据
+
+```hive
+SELECT userid, AVG(totalmoney) AS avg_money FROM itheima.orders GROUP BY userid HAVING avg_money > 10000;
+```
+
+### JOIN
+
+JOIN订单表和用户表，找出用户名
+
+```HIVE
+SELECT o.orderid, o.userid, u.username, o.totalmoney, o.useraddress, o.paytime FROM itheima.orders o JOIN itheima.users u ON o.userid = u.userid;
+```
+
+左外关联，订单表和用户表，找出用户名
+
+```HIVE
+SELECT o.orderid, o.userid, u.username, o.totalmoney, o.useraddress, o.paytime FROM itheima.orders o LEFT JOIN itheima.users u ON o.userid = u.userid;
+```
+
