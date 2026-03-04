@@ -2081,3 +2081,185 @@ SELECT o.orderid, o.userid, u.username, o.totalmoney, o.useraddress, o.paytime F
 SELECT o.orderid, o.userid, u.username, o.totalmoney, o.useraddress, o.paytime FROM itheima.orders o LEFT JOIN itheima.users u ON o.userid = u.userid;
 ```
 
+
+
+### 正则表达式
+
+正则表达式是一种规则集合，通过特定的规则字符描述，来判断字符串是否符合规则。
+
+相较于有局限的LIKE 我们更倾向于使用功能强大的`RLIKE`
+
+#### 1. 基础元字符与定位符
+
+| **字符** | **描述 (匹配)**                                              | **示例**                       |
+| -------- | ------------------------------------------------------------ | ------------------------------ |
+| `.`      | 任意单个字符，除换行符外                                     | `jav.` 匹配 `java`             |
+| `[  ]`   | `[ ]` 中的任意一个字符                                       | `java` 匹配 `j[abc]va`         |
+| `-`      | `[ ]` 内表示字符范围                                         | `java` 匹配 `[a-z]av[a-g]`     |
+| `^`      | 在 `[ ]` 内的开头，匹配除 `[ ]` 内字符之外的任意一个字符     | `java` 匹配 `j[^b-f]va`        |
+| `|`      | 或                                                           | `x|y` 匹配 `x` 或 `y`          |
+| `\`      | 将下一字符标记为特殊字符、文本、反向引用或八进制转义符       | `\(` 匹配 `(`                  |
+| `$`      | 匹配输入字符串结尾的位置。如果设置了 RegExp 对象的 Multiline 属性，`$` 还会与 `\n` 或 `\r` 之前的位置匹配 | `;$` 匹配位于一行末尾的 `;` 号 |
+
+------
+
+#### 2. 重复次数 (量词)
+
+| **字符** | **描述 (匹配)**                                              | **示例**                               |
+| -------- | ------------------------------------------------------------ | -------------------------------------- |
+| `*`      | 零次或多次匹配前面的字符                                     | `zo*` 匹配 `zoo` 或 `z`                |
+| `+`      | 一次或多次匹配前面的字符                                     | `zo+` 匹配 `zo` 或 `zoo`               |
+| `?`      | 零次或一次匹配前面的字符                                     | `zo?` 匹配 `z` 或 `zo`                 |
+| `{n}`    | $n$ 是非负整数。正好匹配 $n$ 次                              | `o{2}` 匹配 `food` 中的两个 `o`        |
+| `{n,}`   | $n$ 是非负整数。至少匹配 $n$ 次                              | `o{2,}` 匹配 `fooood` 中的所有 `o`     |
+| `{n,m}`  | $n$ 和 $m$ 是非负整数，其中 $n \le m$。匹配至少 $n$ 次，至多 $m$ 次 | `o{1,3}` 匹配 `foooood` 中的前三个 `o` |
+
+------
+
+#### 3. 边界与特殊字符类
+
+| **字符** | **描述 (匹配)**                           | **示例**                                                 |
+| -------- | ----------------------------------------- | -------------------------------------------------------- |
+| `\p{P}`  | 一个标点字符 `!"#$%&'()*+,-./:;<=>?@[]^_{ | }~`                                                      |
+| `\b`     | 匹配一个字边界                            | `va\b` 匹配 `java` 中的 `va`，但不匹配 `javar` 中的 `va` |
+| `\B`     | 非字边界匹配                              | `va\B` 匹配 `javar` 中的 `va`，但不匹配 `java` 中的 `va` |
+| `\d`     | 数字字符匹配                              | `1[\d]` 匹配 `13`                                        |
+| `\D`     | 非数字字符匹配                            | `[\D]java` 匹配 `Jjava`                                  |
+| `\w`     | 单词字符                                  | `java` 匹配 `[\w]ava`                                    |
+| `\W`     | 非单词字符                                | `$java` 匹配 `[\W]java`                                  |
+| `\s`     | 空白字符                                  | `Java 2` 匹配 `Java\s2`                                  |
+| `\S`     | 非空白字符                                | `java` 匹配 `j[\S]va`                                    |
+| `\f`     | 匹配换页符                                | 等效于 `\x0c` 和 `\cL`                                   |
+| `\n`     | 匹配换行符                                | 等效于 `\x0a` 和 `\cJ`                                   |
+
+
+
+#### 4.实操
+
+Hive中提供RLIKE关键字，可以供用户使用正则和数据进行匹配。
+我们以上一节中使用的订单表为例，来简单使用一下RLIKE正则匹配。
+
+```hive
+-- 查找广东省的数据
+-- 开头是什么字符都行，中间必须有“广东”，结尾是什么字符也都行。
+SELECT * FROM itheima.orders WHERE useraddress RLIKE '.*广东.*';
+
+
+-- 查找用户地址是：xx省 xx市 xx区的数据
+SELECT * FROM itheima.orders WHERE useraddress RLIKE '..省 ..市 ..区';
+
+-- 查找用户姓为张、王、邓(+的生效范围为紧挨着的一个 即'\\S+')
+SELECT * FROM itheima.orders WHERE username RLIKE '[张王邓]\\S+';
+
+
+-- 查找手机号符合：188****0*** 规则
+SELECT * FROM itheima.orders WHERE userphone  RLIKEE '188\\S{4}0\\S{3}';
+```
+
+> 当然关于上 xx省 xx市 xx县 不是很推荐 '..' 因为这样'黑龙江省'就会因为'前面不是两位 而被忽略
+>
+> | **需求**         | **正则表达式**   | **说明**                                                     |
+> | ---------------- | ---------------- | ------------------------------------------------------------ |
+> | **死磕两个字**   | `..省 ..市 ..区` | 必须是：2字+省+空格+2字+市+空格+2字+区                       |
+> | **模糊匹配字数** | `.*省.*市.*区`   | 只要地址里按顺序出现了省、市、区，中间几个字、有没有空格都行 |
+> | **至少有一个字** | `.+省 .+市 .+区` | `+` 代表至少有 1 个字符，比 `.` 更灵活                       |
+
+> 对于手机号 我们有两种方案;
+>
+> ```hive
+> SELECT userPhone FROM orders WHERE userPhone RLIKE '188....0...';
+> 
+> SELECT userPhone FROM orders WHERE userPhone RLIKE '188\\S{4}0\\S{3}';
+> ```
+>
+> | **特性**         | **第一句：188\\S{4}0\\S{3}**           | **第二句：188....0...**                              |
+> | ---------------- | -------------------------------------- | ---------------------------------------------------- |
+> | **`.` vs `\\S`** | **更严谨**。`\\S` 必须是非空格字符。   | **更宽松**。`.` 可以是任何东西（包括空格、制表符）。 |
+> | **数量表达**     | **易读**。`{4}` 一眼看出是 4 位。      | **易错**。点多了少了很难数清。                       |
+> | **匹配范围**     | 如果手机号里混进了空格，它**不匹配**。 | 如果手机号里混进了空格，它**依然匹配**。             |
+
+
+
+### UNION联合
+
+掌握UNION关键字进行查询结果的联合
+
+UNION 用于将多个 SELECT 语句的结果组合成单个结果集。每个 select 语句返回的列的数量和名称必须相同。否则，将引发架构错误。
+
+#### **基础语法：**
+
+```hive
+SELECT ...    
+	UNION [ALL]
+SELECT ...
+```
+
+
+
+让我们准备数据来测试
+
+```hive
+CREATE TABLE itheima.course(
+c_id string, 
+c_name string, 
+t_id string)
+ROW FORMAT DELIMITED FIELDS TERMINATED BY '\t';
+
+LOAD DATA LOCAL INPATH '/home/hadoop/course.txt' INTO TABLE itheima.course; 
+```
+
+联合两个查询结果集
+
+```hive
+SELECT * FROM course WHERE t_id = '周杰轮'
+    UNION 
+SELECT * FROM course WHERE t_id = '王力鸿'
+```
+
+
+
+#### UNION联合 - 去重
+
+UNION默认有去重功能：直接联合两个同样的查询结果
+
+```HIVE
+SELECT * FROM course
+UNION 
+SELECT * FROM course
+```
+
+如果不需要去重效果
+
+```HIVE
+SELECT * FROM course    
+UNION ALL 
+SELECT * FROM course
+```
+
+
+
+#### 其他写法
+
+**UNION写在FROM中**
+
+```hive
+SELECT t_id, COUNT(*) FROM 
+(
+	SELECT t_id FROM itheima.course WHERE t_id = '周杰轮'
+		UNION ALL
+	SELECT t_id FROM itheima.course WHERE t_id = '王力鸿'
+) AS u GROUP BY t_id;
+```
+
+
+
+**用于INSERT SELECT中**
+
+```hive
+CREATE TABLE itheima.course2 LIKE itheima.course;
+INSERT OVERWRITE TABLE itheima.course2    
+SELECT * FROM itheima.course	
+UNION ALL    
+SELECT * FROM itheima.course;
+```
+
