@@ -2164,12 +2164,14 @@ SELECT * FROM itheima.orders WHERE userphone  RLIKEE '188\\S{4}0\\S{3}';
 > | **模糊匹配字数** | `.*省.*市.*区`   | 只要地址里按顺序出现了省、市、区，中间几个字、有没有空格都行 |
 > | **至少有一个字** | `.+省 .+市 .+区` | `+` 代表至少有 1 个字符，比 `.` 更灵活                       |
 
-> 对于手机号 我们有两种方案;
+> 对于手机号188****0*** 我们有3种方案;
 >
 > ```hive
 > SELECT userPhone FROM orders WHERE userPhone RLIKE '188....0...';
 > 
 > SELECT userPhone FROM orders WHERE userPhone RLIKE '188\\S{4}0\\S{3}';
+> 
+> SELECT userPhone FROM orders WHERE userPhone RLIKE '1889[0-9]{4}0[0-9]{3}'
 > ```
 >
 > | **特性**         | **第一句：188\\S{4}0\\S{3}**           | **第二句：188....0...**                              |
@@ -2179,6 +2181,20 @@ SELECT * FROM itheima.orders WHERE userphone  RLIKEE '188\\S{4}0\\S{3}';
 > | **匹配范围**     | 如果手机号里混进了空格，它**不匹配**。 | 如果手机号里混进了空格，它**依然匹配**。             |
 
 
+
+####   常用匹配邮箱
+
+```hive
+SELECT 8 FROM TABLE WHERE email = '\\S+@\\S+\\.(?i)com'
+```
+
+>  这里的`?i`是忽略大小写,我们传统会这么写`\\S+@\\S+@\\.(com|COM).`,`?i`的出现会更灵活,然后`?i`生效的范围是自他以后,也就是理论上:
+>
+> ```HIVE
+> (?i)\\S+@\\S+\\.COM
+> ```
+>
+> 会更优雅一些
 
 ### UNION联合
 
@@ -2262,4 +2278,84 @@ SELECT * FROM itheima.course
 UNION ALL    
 SELECT * FROM itheima.course;
 ```
+
+
+
+### 数据抽样
+
+数据抽样故名思与,就是对数据进行抽取,那么为什么要这么做呢?
+
+对表进行随机抽样是非常有必要的。大数据体系下，在真正的企业环境中，很容易出现很大的表，比如体积达到TB级别。对这种表一个简单的`SELECT *` 都会非常的慢，哪怕`LIMIT 10`想要看10条数据，也会走MapReduce流程这个时间等待是不合适的。Hive提供的快速抽样的语法，可以快速从大表中随机抽取一些数据供用户查看。
+
+
+
+#### `TABLESAMPLE`函数
+
+进行随机抽样，本质上就是用**`TABLESAMPLE`函数**
+
+##### 语法1，基于随机分桶抽样：
+
+```hive
+SELECT ... FROM tbl TABLESAMPLE(BUCKET x OUT OF y ON(colname | rand()))
+```
+
+- y表示将表数据随机划分成y份（y个桶）
+- x表示从y里面随机抽取x份数据作为取样
+- `colname`表示随机的依据基于某个列的值
+- `rand()`表示随机的依据基于整行
+
+示例：
+
+```hive
+SELECT username, orderId, totalmoney FROM itheima.orders TABLESAMPLE(BUCKET 1 OUT OF 10 ON username);
+
+SELECT * FROM itheima.orders TABLESAMPLE(BUCKET 1 OUT OF 10 ON rand());
+```
+
+注意：
+
+- 使用colname作为随机依据，则其它条件不变下，每次抽样结果一致
+- 使用rand()作为随机依据，每次抽样结果都不同
+
+结合我们的数据库表来说:
+
+```hive
+SELECT orders.userName,orders.orderId,orders.totalMoney FROM orders TABLESAMPLE ( BUCKET 3 OUT OF 10 ON userName);
+```
+
+这里的意思就是把我们的表换分为10个桶,然后这不是抽取“3个桶”，而是抽取“第3个桶”。
+
+举例有100条数据,划分为10个桶,这里的`BUCKET 3 OUT OF 10`就是取第三个桶的30-39
+
+然后每一次运行结果是一致的.
+
+**什么时候会快?**
+
+即按照userName做了分桶表之后会快
+
+
+
+ 而对于另一个加了`RAND()`的情况
+
+```hive
+SELECT * FROM orders TABLESAMPLE ( BUCKET 3 OUT OF 10 ON rand());
+```
+
+这里每次都不一样
+
+
+
+##### 语法2，基于数据块抽样
+
+```hive
+SELECT ... FROM tbl TABLESAMPLE(num ROWS | num PERCENT | num(K|M|G));
+```
+
+- `num ROWS` 表示抽样num条数据
+- `num PERCENT` 表示抽样num百分百比例的数据
+- `num(K|M|G)` 表示抽取num大小的数据，单位可以是K、M、G表示KB、MB、GB
+
+注意：使用这种语法抽样，条件不变的话，每一次抽样的结果都一致
+
+即无法做到随机，只是按照数据顺序从前向后取。
 
