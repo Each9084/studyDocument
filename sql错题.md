@@ -1150,3 +1150,96 @@ WHERE cnt >= 2 AND rn = 1
 ORDER BY user_id;
 ```
 
+
+
+
+
+### **SQL285** **实习广场投递简历分析(三)**
+
+**描述**
+
+在牛客实习广场有很多公司开放职位给同学们投递，同学投递完就会把简历信息存到数据库里。
+
+现在有简历信息表(resume_info)，部分信息简况如下:
+
+| id   | job    | date       | num  |
+| ---- | ------ | ---------- | ---- |
+| 1    | C++    | 2025-01-02 | 53   |
+| 2    | Python | 2025-01-02 | 23   |
+| 3    | Java   | 2025-01-02 | 12   |
+| 4    | C++    | 2025-01-03 | 54   |
+| 5    | Python | 2025-01-03 | 43   |
+| 6    | Java   | 2025-01-03 | 41   |
+| 7    | Java   | 2025-02-03 | 24   |
+| 8    | C++    | 2025-02-03 | 23   |
+| 9    | Python | 2025-02-03 | 34   |
+| 10   | Java   | 2025-02-04 | 42   |
+| 11   | C++    | 2025-02-04 | 45   |
+| 12   | Python | 2025-02-04 | 59   |
+| 13   | C++    | 2026-01-04 | 230  |
+| 14   | Java   | 2026-01-04 | 764  |
+| 15   | Python | 2026-01-04 | 644  |
+| 16   | C++    | 2026-01-06 | 240  |
+| 17   | Java   | 2026-01-06 | 714  |
+| 18   | Python | 2026-01-06 | 624  |
+| 19   | C++    | 2026-01-04 | 260  |
+| 20   | Java   | 2026-02-14 | 721  |
+| 21   | Python | 2026-02-14 | 321  |
+| 22   | C++    | 2026-02-14 | 134  |
+| 23   | Java   | 2026-02-24 | 928  |
+| 24   | Python | 2026-02-24 | 525  |
+| 25   | C++    | 2027-02-06 | 231  |
+
+第1行表示，在2025年1月2号，C++岗位收到了53封简历
+
+......
+
+最后1行表示，在2027年2月6号，C++岗位收到了231封简历
+
+请你写出SQL语句查询在2025年投递简历的每个岗位，每一个月内收到简历的数目，和对应的2026年的同一个月同岗位，收到简历的数目，最后的结果先按first_year_mon月份降序，再按job降序排序显示，以上例子查询结果如下:
+
+| job    | first_year_mon | first_year_cnt | second_year_mon | second_year_cnt |
+| ------ | -------------- | -------------- | --------------- | --------------- |
+| Python | 2025-02        | 93             | 2026-02         | 846             |
+| Java   | 2025-02        | 66             | 2026-02         | 1649            |
+| C++    | 2025-02        | 68             | 2026-02         | 394             |
+| Python | 2025-01        | 66             | 2026-01         | 1268            |
+| Java   | 2025-01        | 53             | 2026-01         | 1478            |
+| C++    | 2025-01        | 107            | 2026-01         | 470             |
+
+解析:
+
+第1行表示Python岗位在2025年2月收到了93份简历，在对应的2026年2月收到了846份简历
+
+......
+
+最后1行表示C++岗位在2025年1月收到了107份简历，在对应的2026年1月收到了470份简历
+
+
+
+<span style = "color:red"> 思路: 很简单针对于这种需要重塑column的表其实就是JOIN 然后针对各个内容进行条件的筛选</span>
+
+<span style = "color:red"> 知识点: `DATE_FORMAT`,`MONTH`</span>
+
+
+
+```sql
+SELECT ri1.job,first_year_mon,first_year_cnt,second_year_mon, second_year_cnt FROM(
+SELECT job,DATE_FORMAT(date,'%Y-%m') AS first_year_mon,MONTH(date) AS month,SUM(num) AS first_year_cnt
+FROM resume_info 
+WHERE date >='2025-01-01' AND date <= '2025-12-31'
+GROUP BY job,DATE_FORMAT(date,'%Y-%m'),MONTH(date)
+) AS ri1
+JOIN 
+(
+    SELECT job,DATE_FORMAT(date,'%Y-%m') AS second_year_mon,MONTH(date) AS month,SUM(num) AS second_year_cnt
+    FROM resume_info
+    WHERE date >='2026-01-01' AND date <= '2026-12-31'
+    GROUP BY job,DATE_FORMAT(date,'%Y-%m'),MONTH(date)
+
+) AS ri2
+
+ON ri1.job = ri2.job AND ri1.month = ri2.month
+ORDER BY first_year_mon desc,ri1.job desc ;
+```
+
