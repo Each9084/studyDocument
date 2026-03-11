@@ -1243,3 +1243,24 @@ ON ri1.job = ri2.job AND ri1.month = ri2.month
 ORDER BY first_year_mon desc,ri1.job desc ;
 ```
 
+
+
+然而这时基础思维,用两个子查询做 `JOIN`，这在逻辑上非常清晰。
+
+但其实如果想挑战一下更“炫技”的写法，可以用 **`CASE WHEN` 配合 `GROUP BY`**，只需要扫描一次表就能搞定：
+
+```sql
+SELECT 
+    job,
+    MAX(CASE WHEN YEAR(date) = 2025 THEN DATE_FORMAT(date, '%Y-%m') END) AS first_year_mon,
+    SUM(CASE WHEN YEAR(date) = 2025 THEN num ELSE 0 END) AS first_year_cnt,
+    MAX(CASE WHEN YEAR(date) = 2026 THEN DATE_FORMAT(date, '%Y-%m') END) AS second_year_mon,
+    SUM(CASE WHEN YEAR(date) = 2026 THEN num ELSE 0 END) AS second_year_cnt
+FROM resume_info
+WHERE YEAR(date) IN (2025, 2026)
+GROUP BY job, MONTH(date) -- 按岗位和月份分组
+HAVING first_year_cnt > 0 AND second_year_cnt > 0 -- 确保两年都有数据
+ORDER BY first_year_mon DESC, job DESC;
+```
+
+这种写法的核心在于：**把“年份”作为筛选条件放进 `SUM` 里面**，这样就不用辛苦地拼表了。

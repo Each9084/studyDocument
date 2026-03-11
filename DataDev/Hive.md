@@ -2083,7 +2083,7 @@ SELECT o.orderid, o.userid, u.username, o.totalmoney, o.useraddress, o.paytime F
 
 
 
-### 正则表达式
+## 二、正则表达式
 
 正则表达式是一种规则集合，通过特定的规则字符描述，来判断字符串是否符合规则。
 
@@ -2196,7 +2196,7 @@ SELECT 8 FROM TABLE WHERE email = '\\S+@\\S+\\.(?i)com'
 >
 > 会更优雅一些
 
-### UNION联合
+## 三、UNION联合
 
 掌握UNION关键字进行查询结果的联合
 
@@ -2281,7 +2281,7 @@ SELECT * FROM itheima.course;
 
 
 
-### 数据抽样
+## 四、数据抽样
 
 数据抽样故名思与,就是对数据进行抽取,那么为什么要这么做呢?
 
@@ -2368,3 +2368,183 @@ SELECT ... FROM tbl TABLESAMPLE(num ROWS | num PERCENT | num(K|M|G));
 | **数据代表性**   | 高（可控制字段关联性）       | 高（适合统计大盘）       | 低（通常只取头部）  |
 | **是否全表扫描** | 分桶表不需要 / 普通表需要    | 需要                     | 不需要（取完即走）  |
 | **确定性**       | 只要 `ON col` 固定，结果固定 | 每次运行可能略有差异     | 相对固定            |
+
+
+
+## 五、Virtual Columns 虚拟列
+
+虚拟列是Hive内置的可以在查询语句中使用的特殊标记，可以查询数据本身的详细参数。
+
+Hive目前可用3个虚拟列：
+
+- `INPUT__FILE__NAME`，显示数据行所在的具体文件
+
+- `BLOCK__OFFSET__INSIDE__FILE`，显示数据行所在文件的偏移量
+
+- `ROW__OFFSET__INSIDE__BLOCK`，显示数据所在HDFS块的偏移量此虚拟列需要设置：`SET hive.exec.rowoffset=true` 才可使用
+
+示例：
+
+```hive
+SELECT *, INPUT__FILE__NAME, BLOCK__OFFSET__INSIDE__FILE, ROW__OFFSET__INSIDE__BLOCK FROM itheima.course;
+```
+
+
+
+### 虚拟列
+
+虚拟列的作用:
+
+- 查看行级别的数据详细参数
+- 可以用于WHERE、GROUP BY等各类统计计算中
+- 可以协助进行错误排查工作
+
+
+
+### 偏移量 (Offset)
+
+**偏移量**这个概念在计算机里非常普遍，它的本质就是：**距离起点的距离。**
+
+为了让你理解得更透彻，我们分两个场景来看：
+
+**A. 在文件读取中（Hive 虚拟列场景）**
+
+想象有一盘长达 100 米的磁带（或者一长卷纸）。
+
+- 如果你在读第 10 字节的数据，偏移量就是 `10`。
+- 如果你读到了第 500 字节，偏移量就是 `500`。
+- **Hive 的 `BLOCK__OFFSET__INSIDE__FILE`** 就是告诉你：当前这一行数据，是从这个文件的第几个字节开始的。
+
+**B. 在消息队列中（比如 Kafka）**
+
+这是大数据里最常提“偏移量”的地方。
+
+- 假设一个队列里有 1000 条消息，就像排队买奶茶。
+- 你已经处理到了第 500 号人，那么你的 **Offset 就是 500**。
+- **它的作用**：万一系统突然断电关机了，重启后，你只要看一眼“书签”（Offset），就知道该从第 501 号继续往下读，而不是从头再来。
+
+# Ⅳ 函数
+
+Hive的函数分为两大类：**内置函数（Built-in Functions）**、**用户定义函数UDF（User-Defined Functions）**：
+
+![2.hive database operation18](../assets/dataDevAssets/2.hive database operation18.png)
+
+Hive的函数共计有上百种，详细的函数使用可以参阅：官方文档(https://cwiki.apache.org/confluence/display/Hive/LanguageManual+UDF#LanguageManualUDF-MathematicalFunctions)
+
+### 一、内建函数
+
+Hive内建了不少函数
+
+使用`show functions`查看当下可用的所有函数；
+
+通过`describe function extended funcname`来查看函数的使用方式。
+
+<img  src = "../assets/dataDevAssets/2.hive database operation19.png" width=80%>
+
+#### ①Mathematical Functions 数学函数 - 部分
+
+```hive
+----Mathematical Functions 数学函数-------------
+--取整函数: round  返回double类型的整数值部分 （遵循四舍五入）
+select round(3.1415926);
+
+--指定精度取整函数: round(double a, int d) 返回指定精度d的double类型
+select round(3.1415926,4);
+
+--取随机数函数: rand 每次执行都不一样 返回一个0到1范围内的随机数
+select rand();
+
+--指定种子取随机数函数: rand(int seed) 得到一个稳定的随机数序列
+select rand(3);
+
+--求数字的绝对值
+select abs(-3);
+
+--得到pi值（小数点后15位精度）
+select pi();
+```
+
+
+
+#### ②Collection Functions集合函数 - 全部
+
+| **Return Type** | **Name(Signature)**             | **Description**                                        |
+| --------------- | ------------------------------- | ------------------------------------------------------ |
+| int             | size(Map<K.V>)                  | 返回map类型的元素个数                                  |
+| int             | size(Array<T>)                  | 返回array类型的元素个数                                |
+| array<K>        | map_keys(Map<K.V>)              | 返回map内的全部key（得到的是array）                    |
+| array<V>        | map_values(Map<K.V>)            | 返回map内的全部value（得到的是array）                  |
+| boolean         | array_contains(Array<T>, value) | 如果array包含指定value，返回True                       |
+| array<t>        | sort_array(Array<T>)            | 根据数组元素的自然顺序按升序对输入数组进行排序并返回它 |
+
+
+
+#### ③Type Conversion Functions类型转换函数 - 全部
+
+| **Return Type**                   | **Name(Signature)**    | **Description**                                              |
+| --------------------------------- | ---------------------- | ------------------------------------------------------------ |
+| binary                            | binary(string\|binary) | 将给定字符串转换为二进制                                     |
+| **Expected "=" to follow "type"** | cast(expr as <type>)   | 将表达式 expr 的结果转换为给定类型 。例如，cast('1' as BIGINT） 会将字符串 '1' 转换为整数表示。如果转换不成功，则返回 null。对于cast(expr as boolean)，对于非空字符串将会返回True |
+
+
+
+
+
+#### ④Date Functions日期函数 - 部分
+
+| **Return Type**                         | **Name(Signature)**                                          | **Description**                                              |
+| --------------------------------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| timestamp                               | current_timestamp()                                          | 返回当前时间戳。在同一个查询中对 current _ time戳的所有调用都返回相同的值。 |
+| date                                    | current_date                                                 | 返回当前日期。在同一个查询中对current_date戳的所有调用都返回相同的值。 |
+| 2.1.0版本之前返回string现在版本返回date | to_date(string timestamp)                                    | 时间戳转日期                                                 |
+| int                                     | year(string date)quarter(date/timestamp/string)month(string date)day(string date) dayofmonth(date)hour(string date)minute(string date)second(string date)weekofyear(string date) | 得到给定时间的：年得到给定时间的：季度得到给定时间的：月得到给定时间的：日得到给定时间的：当前月份第几天得到给定时间的：小时得到给定时间的：分钟得到给定时间的：秒得到给定时间的：本年第几周 |
+| int                                     | datediff(string enddate, string startdate)                   | 返回enddate 到 startdate之间的天数                           |
+| 2.1.0版本之前返回string现在版本返回date | date_add(date/timestamp/string startdate, tinyint/smallint/int days)date_sub(date/timestamp/string startdate, tinyint/smallint/int days) | 日期相加: date_add('2008-12-31', 1) = '2009-01-01'.日期相减: date_sub('2008-12-31', 1) = '2008-12-30'. |
+
+| **Return Type** | **Name (Signature)**                 | **Description**                                             |
+| --------------- | ------------------------------------ | ----------------------------------------------------------- |
+| **timestamp**   | `current_timestamp()`                | 返回当前时间戳。同一查询中多次调用结果相同。                |
+| **date**        | `current_date`                       | 返回当前日期。2.1.0 版本后由 `string` 改为 `date` 类型。    |
+| **date**        | `to_date(string ts)`                 | 时间戳转日期。2.1.0 版本后由 `string` 改为 `date` 类型。    |
+| **int**         | `year(string date)`                  | 提取给定时间的：**年**                                      |
+| **int**         | `quarter(date/ts/string)`            | 提取给定时间的：**季度**                                    |
+| **int**         | `month(string date)`                 | 提取给定时间的：**月**                                      |
+| **int**         | `day(string date)`                   | 提取给定时间的：**日**                                      |
+| **int**         | `dayofmonth(date)`                   | 提取给定时间在：**当前月份的第几天**                        |
+| **int**         | `hour(string date)`                  | 提取给定时间的：**小时**                                    |
+| **int**         | `minute(string date)`                | 提取给定时间的：**分钟**                                    |
+| **int**         | `second(string date)`                | 提取给定时间的：**秒**                                      |
+| **int**         | `weekofyear(string date)`            | 提取给定时间在：**当年的第几周**                            |
+| **int**         | `datediff(string end, string start)` | 计算两个日期之间的**天数差**（end - start）                 |
+| **date**        | `date_add(start, days)`              | **日期增加**：如 `date_add('2026-12-31', 1) = '2027-01-01'` |
+| **date**        | `date_sub(start, days)`              | **日期减少**：如 `date_sub('2026-12-31', 1) = '2026-12-30'` |
+
+
+
+### 二、Conditional Functions条件函数 - 全部
+
+| **Return Type** | **Name (Signature)**    | **Description**                                              | **Usage Example**                         |
+| --------------- | ----------------------- | ------------------------------------------------------------ | ----------------------------------------- |
+| **T**           | `if(cond, v1, v2)`      | **三元运算**：如果 cond 为 true，返回 v1，否则返回 v2。      | `if(score>=60, '及格', '挂科')`           |
+| **boolean**     | `isnull(a)`             | **判空**：如果 a 为 NULL 返回 true，否则返回 false。         | `isnull(user_id)`                         |
+| **boolean**     | `isnotnull(a)`          | **非空判定**：如果 a 不为 NULL 返回 true。                   | `isnotnull(email)`                        |
+| **T**           | `nvl(v, default)`       | **简单补全**：如果 v 为 NULL，返回默认值，否则返回 v。       | `nvl(phone, '无联系方式')`                |
+| **T**           | `COALESCE(v1, v2, ...)` | **多级补全**：返回参数列表中第一个非 NULL 的值。             | `COALESCE(phone, tel, '暂无')`            |
+| **T**           | `CASE a WHEN b...`      | **简单匹配**：判断 a 是否等于 b，等于则返回结果。            | `CASE sex WHEN 1 THEN '男' ELSE '女' END` |
+| **T**           | `CASE WHEN a...`        | **复杂搜索**：a 是表达式，为 true 则返回结果。               | `CASE WHEN price > 100 THEN '贵' END`     |
+| **T**           | `nullif(a, b)`          | **等值置空**：如果 a = b，返回 NULL；否则返回 a。            | `nullif(status, 'unknown')`               |
+| **boolean**     | `assert_true(cond)`     | **断言抛错**：如果 cond 不为 true，则**直接中断查询并报错**。 | `assert_true(price > 0)`                  |
+
+
+
+### 三、String Functions字符串函数 - 部分
+
+| **Return Type** | **Name (Signature)**        | **Description**                                              |
+| --------------- | --------------------------- | ------------------------------------------------------------ |
+| **string**      | `concat(str1, str2, ...)`   | **拼接字符串**。直接将多个参数首尾相连。若任一参数为 NULL，结果为 NULL。 |
+| **string**      | `concat_ws(sep, str1, ...)` | **带分隔符拼接**。第一个参数为分隔符（SEP）。会自动跳过 NULL 参数，非常实用。 |
+| **int**         | `length(string A)`          | **计算长度**。返回字符串中字符的数量。                       |
+| **string**      | `lower(string A)`           | **全转小写**。同 `lcase(A)`。                                |
+| **string**      | `upper(string A)`           | **全转大写**。同 `ucase(A)`。                                |
+| **string**      | `trim(string A)`            | **两端去空格**。删除字符串开头和结尾的空白字符。             |
+| **array**       | `split(str, pat)`           | **正则切割**。按照正则表达式 `pat` 拆分字符串，**返回一个数组 (Array)**。 |
