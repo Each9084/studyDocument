@@ -2548,3 +2548,27 @@ select pi();
 | **string**      | `upper(string A)`           | **全转大写**。同 `ucase(A)`。                                |
 | **string**      | `trim(string A)`            | **两端去空格**。删除字符串开头和结尾的空白字符。             |
 | **array**       | `split(str, pat)`           | **正则切割**。按照正则表达式 `pat` 拆分字符串，**返回一个数组 (Array)**。 |
+
+
+
+# Ⅴ ETL案例
+
+其实我们刚刚完成了
+
+从表tb_msg_source 查询数据进行数据过滤和转换，并将结果写入到：tb_msg_etl表中的操作
+
+这种操作，本质上是一种简单的ETL行为。
+
+ETL：
+
+- E，Extract，抽取
+
+- T，Transform，转换
+
+- L，Load，加载
+
+从A抽取数据(E)，进行数据转换过滤(T)，将结果加载到B(L)，就是ETL啦
+
+ETL在大数据系统中是非常常见的，后续我们还会继续接触到它。
+
+目前简单了解一下即可。
