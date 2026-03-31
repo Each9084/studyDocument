@@ -40,7 +40,7 @@
 
 1. **建立管道**：客户端向 NameNode 申请写，NameNode 返回 3 台 DataNode 地址（A, B, C）。
 2. **流水线传输**：客户端只把数据发给 **A**；A 收到一部分（Packet）后，立刻传给 **B**；B 再传给 **C**。
-3. ** ACK 确认**：当 C 写完返回确认给 B，B 返回给 A，最后 A 告诉客户端：“写好了”。
+3. **ACK 确认**：当 C 写完返回确认给 B，B 返回给 A，最后 A 告诉客户端：“写好了”。
 
 这种**串行流水线**的方式比起“由客户端同时向三台机器发三份数据”，极大地节省了客户端的出口带宽。
 
@@ -177,14 +177,26 @@ HDFS 遵循主/从架构，由单个 NameNode(NN) 和多个 DataNode(DN) 组成�
 
 - **职责**：处理客户端的所有读写请求，并把元数据的变更写入“共享存储（QJM）”。
 
+NameNode虽然还是处理原来基本的逻辑,但是在HA里面改进了一点:
+
+**传统 NameNode**：它是一个“单机大拿”。它把元数据改动（EditLog）直接写在**自己的本地磁盘**上。如果它挂了，磁盘里的账本别人拿不到。
+
+**Active NN**：它是一个“透明领导”。它把元数据改动写到**共享存储（JournalNodes）**里。它必须确保这些改动被传到了“云端账本”上，这样 Standby NN 才能实时看到并跟进。
+
+
+
 **2. Standby NameNode (备节点)**
 
 - **职责**：实时监听“共享存储”，同步元数据。它时刻保持和 Active 节点一样的状态，随时准备顶班。
 
 **3. JournalNodes (共享存储/QJM)**
 
-- **职责**：这是主备之间通信的“账本”。Active 写，Standby 读。
-- **企业级重点**：通常部署为**奇数个**（如 3, 5, 7）。采用 Paxos 算法（Quorum 机制），只要超过半数（N/2 + 1）节点存活，账本就是安全的。
+存储的是 **EditLog（编辑日志）**。它记录的是 NameNode 上的操作记录，例如：“用户 A 在 10:01 创建了文件夹 /data”。它只存元数据的增量变化，体积非常小。
+
+- **职责**：这是主备之间通信的“账本”。
+  - Active 写，当有文件写入时，Active NN 把这条元数据修改记录写到 **JournalNodes** 集群中。
+  - Standby 读,Standby NN 像看直播一样，不断从 JournalNodes 读取这些记录并应用到自己的内存里。
+- **企业级重点**：通常部署为**奇数个**（如 3, 5, 7）。采用 Paxos 算法（Quorum 机制），只要超过半数（N/2 + 1）节点存活，账本就是安全的。只要 JournalNodes 集群中超过半数的节点写成功了，这条记录才算生效（这就是 **Quorum 机制**）
 
 **4. ZKFC (ZK Failover Controller)**
 
@@ -197,7 +209,12 @@ HDFS 遵循主/从架构，由单个 NameNode(NN) 和多个 DataNode(DN) 组成�
 
 我们会在后面的内容里重点介绍ZooKeeper
 
-
+> 没有提到的DataNode因为是最基本的工作方式,没有太大变化所以不属于五大组件,但是还是有一些变化需要明确
+>
+> 在传统模式下，DataNode 只给一个 NameNode 发心跳。但在 HA 模式下，DataNode 变得“圆滑”了：
+>
+> - **全量汇报**：DataNode 会同时向 Active 和 Standby 发送**块报告（Block Report）**。
+> - **意义**：这让 Standby 脑子里随时有一张**“全集群块位置地图”**。一旦 Active 挂了，Standby 切换上来时不需要重新扫描几千台机器，真正实现了**“热备（Hot Standby）”**。
 
 #####  **HA 的工作机制：元数据是如何同步的？**
 
@@ -566,7 +583,7 @@ HDFS 就像一个聪明的快递员，他送货的逻辑是这样的：
 - **利用率**：$6/9 \approx 66.7\%$。
 - **容错能力**：挂掉任意 3 台存该单元的机器，数据不丢。
 
-
+原理就是**在这 9 个块中，只要任意 6 个块还在，剩下的 3 个块无论丢了哪几个，都能通过代数运算推导出来。这就像一个方程组：$x + y + z = 10$。如果你知道其中两个数，永远能算出第三个数。**
 
 | **指标**           | **3 副本** | **EC (RS 6,3)** | **结论**               |
 | ------------------ | ---------- | --------------- | ---------------------- |
@@ -886,6 +903,8 @@ HDFS 默认每 **512 字节**（Byte）的数据就会计算一个 Checksum。�
 
 #### **3.8.3 Standby NN**
 
+
+
 ## 三、HDFS 的特点
 
 ### 3.1 高容错
@@ -956,8 +975,6 @@ HDFS 更适合于一次写入多次读取 (write-once-read-many) 的访问模型
 
 HDFS 具有良好的跨平台移植性，这使得其他大数据计算框架都将其作为数据持久化存储的首选方案。
 
-
-
 **深入理解**：HDFS 是用 **Java** 编写的。
 
 **补充点——生态护城河**：
@@ -1015,6 +1032,86 @@ HDFS 具有良好的跨平台移植性，这使得其他大数据计算框架都
 **副本布局策略**：
 
 <div align="center"> <img  src="https://gitee.com/heibaiying/BigData-Notes/raw/master/pictures/hdfs-tolerance-5.jpg"/> </div>
+
+
+
+
+
+
+
+
+
+## Hadoop面试
+
+
+
+**Q1:你能详细说说 NameNode 它是怎么管理元数据的吗？比如说它是如何知道每个文件分布在哪些 DataNode 上，以及如果 NameNode 挂掉，会怎么样保障数据的可用性？**
+
+
+
+**答:**
+
+第一部分：架构组件与核心职责
+
+HDFS 采用经典的 **Master/Slave（主从）架构**，主要由 NameNode、DataNode 和 Client 组成
+
+- **NameNode (Master)**：是系统的‘大脑’。它负责维护**文件系统命名空间**（Namespace），管理目录树及文件到 Block 的映射关系。关键点是：元数据全部存储在 NameNode 的**内存**中，以保证极高的查询响应速度。
+- **DataNode (Slave)**：是具体工作单元。它负责实际的**物理存储**。数据被切分为固定大小的 **Block（默认128MB）** 存在 DataNode 的本地磁盘上。它通过心跳（Heartbeat）和块报告（Block Report）向 NameNode 汇报状态。
+- **Client**：代表用户进行操作，它通过向 NameNode 获取元数据，然后直接与 DataNode 进行并发读写，这种‘元数据与数据流分离’的设计，避免了 Master 节点成为带宽瓶颈。”
+
+
+
+第二部分：Master 与 Slave 的交互逻辑
+
+“两者的关系可以概括为：**指令下达与状态上报**。
+
+1. **心跳机制**：DataNode 定期向 NameNode 发送心跳，证明自己还活着。
+2. **块汇报**：DataNode 启动或定期上报自己拥有的所有块信息，NameNode 据此构建全局的块映射表。
+3. **副本补偿**：如果 NameNode 发现某个 DataNode 失联导致副本数不足，会主动下令让其他存活的 DataNode 进行异步复制，实现系统的**自我修复（Self-healing）**。”
+
+
+
+第三部分：为什么适合大规模存储？（体现深度）
+
+“HDFS 之所以成为大数据基石，主要因为以下三点设计哲学：
+
+1. **块抽象与水平扩展**：通过将文件切分为 Block，一个超大文件（如 10TB）可以分布在数千台廉价服务器上，通过增加节点即可线性扩展存储容量。
+2. **流式数据访问（Streaming Data Access）**：HDFS 牺牲了随机读写性能，通过‘一次写入、多次读取’的模型，实现了极高的**顺序读写吞吐量**，这非常契合离线批处理场景。
+3. **高容错性与机架感知**：通过多副本策略及**机架感知（Rack Awareness）**，它能容忍单机甚至整架交换机的故障，极大地降低了对硬件稳定性的依赖（可以使用廉价机器）。”
+
+
+
+**Q2:什么是机架感知与多副本策略**
+
+**答:**
+
+
+
+1.什么是机架感知 (Rack Awareness)？
+
+简单来说，**机架感知**就是 HDFS 的一套“地理位置地图”。它让 NameNode 知道：
+
+- 哪些 DataNode 挨在一起（在同一个机架上）？
+- 哪些 DataNode 隔得很远（在不同的机架上）？
+
+**为什么要费这个劲？** 因为在数据中心里，**同一个机架**的机器通常共用一个交换机（Switch）。
+
+- **痛点 A**：如果这个交换机坏了，整个机架的机器都会失联。
+- **痛点 B**：跨机架传输数据的速度（网络带宽），远比同一个机架内传输慢得多。
+
+
+
+2.核心算法：副本存放策略 (以 3 副本为例)
+
+这是面试中最爱考的**原题**，请务必背下这套“1-2-3”逻辑：
+
+1. **第 1 个副本**：放在上传数据的那个 DataNode 上（**就近原则**）。如果是集群外提交，则随机挑一台磁盘不太满的。
+2. **第 2 个副本**：放在**另一个机架**的随机节点上（**防灾原则**）。这样即使第一个机架的交换机炸了，数据还在另一个机架。
+3. **第 3 个副本**：放在与第 2 个副本**相同机架**但**不同节点**上（**效率原则**）。既然数据已经跨机架传到了第二个机架，那么在机架内部再复制一次是非常快的。
+
+**总结一句话**：既保证了“机架级”的容错，又尽量减少了“跨机架”的网络流量。
+
+
 
 
 
@@ -1535,6 +1632,23 @@ YARN 资源调度结构:
 
 
 
+
+
+同样资源是怎么“流”起来的？
+
+1. **提交请求**：Client 带着代码（Jar包）去找 **RM**。
+2. **钦点 AM**：RM 并不亲自运行代码。它在集群中找一个空闲的 **NM**，下令：“在这个机器上启动一个 **Container**，用来跑这个任务的 **AM**。”
+   - *注意：AM 自己也是跑在一个 Container 里的！它是任务的第一个进程。*
+3. **AM 算账**：AM 启动后，看了一眼任务：“嘿，我需要 10 个 Map 任务，每个需要 1G 内存。”
+4. **AM 申请资源**：**AM 去找 RM 谈判**：“老板，给我 10 个 Container 的支票（资源令牌）。”
+5. **RM 发放令牌**：RM 根据队列（Capacity/Fair Scheduler）情况，把 10 个 Container 的 **Token** 给 AM。
+6. **AM 找 NM 开工**：**AM 拿着 Token 去找各地的 NM**：“RM 老板批条子了，在你的地盘给我开个工位（Container），把这行代码跑起来！”
+7. **汇报与回收**：任务跑完，AM 告诉 RM：“活干完了，资源还给你。” AM 随后自杀。
+
+
+
+
+
 **3.架构对比（YARN vs. Kubernetes）**
 
 **问**：现在很多公司把大数据任务往 Kubernetes (K8s) 上迁移，你觉得 YARN 相比 K8s 的核心优势在哪里？
@@ -1753,13 +1867,338 @@ YARN 资源调度结构:
 
 > 体系版相交通俗版会更加注重MapReduce本身的应用以及诞生时的设计思路
 
+## 一、MapReduce概述
+
 Hadoop MapReduce 是一个分布式计算框架，用于编写批处理应用程序。编写好的程序可以提交到 Hadoop 集群上用于并行处理大规模的数据集。
+
+MapReduce 的设计初衷是：**数据不动，计算动**。 它把复杂的任务拆解为两个原子操作：
+
+1. **Map (映射)**：把“大问题”拆成“小份”，并行处理。就像把一筐杂乱的硬币分给 10 个人，每人只负责数自己手里的。
+2. **Reduce (归约)**：把“小份结果”按规律合并。就像那 10 个人数完后，把结果报给组长，组长汇总出总金额。
+
+
 
 MapReduce 作业通过将输入的数据集拆分为独立的块，这些块由 `map` 以并行的方式处理，框架对 `map` 的输出进行排序，然后输入到 `reduce` 中。MapReduce 框架专门用于 `<key，value>` 键值对处理，它将作业的输入视为一组 `<key，value>` 对，并生成一组 `<key，value>` 对作为输出。输出和输出的 `key` 和 `value` 都必须实现[Writable](http://hadoop.apache.org/docs/stable/api/org/apache/hadoop/io/Writable.html) 接口。
 
 ```
 (input) <k1, v1> -> map -> <k2, v2> -> combine -> <k2, v2> -> reduce -> <k3, v3> (output)
 ```
+
+
+
+## 二、MapReduce编程模型简述
+
+这里以词频统计为例进行说明，MapReduce 处理的流程如下：
+
+![1.mapreduceProcess](../assets/dataDevAssets/1.mapreduceProcess.png)
+
+1. **input** : 读取文本文件；
+2. **splitting** : 将文件按照行进行拆分，此时得到的 `K1` 行数，`V1` 表示对应行的文本内容；
+3. **mapping** : 并行将每一行按照空格进行拆分，拆分得到的 `List(K2,V2)`，其中 `K2` 代表每一个单词，由于是做词频统计，所以 `V2` 的值为 1，代表出现 1 次；
+4. **shuffling**：由于 `Mapping` 操作可能是在不同的机器上并行处理的，所以需要通过 `shuffling` 将相同 `key` 值的数据分发到同一个节点上去合并，这样才能统计出最终的结果，此时得到 `K2` 为每一个单词，`List(V2)` 为可迭代集合，`V2` 就是 Mapping 中的 V2；
+5. **Reducing** : 这里的案例是统计单词出现的总次数，所以 `Reducing` 对 `List(V2)` 进行归约求和操作，最终输出。
+
+MapReduce 编程模型中 `splitting` 和 `shuffing` 操作都是由框架实现的，需要我们自己编程实现的只有 `mapping` 和 `reducing`，这也就是MapReduce 这个称呼的来源。
+
+
+
+所以可以对照完整的生命周期
+
+**1. 输入与切片 (Input & Splitting)**
+
+- **InputFormat**：定义了如何读取数据（如文本、数据库）。
+- **InputSplit (切片)**：**逻辑概念**。Hadoop 会把 1G 文件逻辑上切成 8 份（每份 128MB），每份对应一个 Map 任务。
+- **RecordReader**：把切片里的二进制数据转换成 `<K1, V1>`（如：`<行偏移量, 文本内容>`）。
+
+**2. Map 阶段**
+
+- 用户编写 `map()` 方法，将 `<K1, V1>` 转换为中间结果 `<K2, V2>`（如：`<单词, 1>`）。
+
+**3. Shuffle 阶段（最核心、最昂贵）**
+
+这是数据从 Map 端流向 Reduce 端的桥梁。它包括：
+
+- **分区 (Partition)**：决定这个 `<K2, V2>` 该去哪一个 Reducer。
+- **排序 (Sort)**：在内存和磁盘中进行排序，保证发往 Reduce 的数据是有序的。
+- **合并 (Combine)**：可选操作，在本地先聚合一下（见下文）。
+
+**4. Reduce 阶段**
+
+- **Copy/Pull**：Reducer 主动去各个 Map 节点拉取属于自己的数据。
+- **Reduce()**：用户逻辑处理，如 `sum` 求和。
+
+**5. 输出 (Output)**
+
+- **OutputFormat**：把结果写回 HDFS。
+
+
+
+
+
+
+
+## 三、combiner & partitioner
+
+两个让性能起飞的“辅助”：Combiner 与 Partitioner
+
+<img src="../assets/dataDevAssets/1.Detailed-Hadoop-MapReduce-Data-Flow-14.png " width=50%>
+
+### 3.1 InputFormat & RecordReaders
+
+让我们先从开始看起,然后再仔细研究Combiner 与 Partitioner
+
+**InputFormat**：定义了如何读取数据（如文本、数据库）。
+
+**InputSplit (切片)**：**逻辑概念**。Hadoop 会把 1G 文件逻辑上切成 8 份（每份 128MB），每份对应一个 Map 任务。
+
+**RecordReader**：把切片里的二进制数据转换成 `<K1, V1>`（如：`<行偏移量, 文本内容>`）。
+
+`InputFormat` 将输出文件拆分为多个 `InputSplit`，并由 `RecordReaders` 将 `InputSplit` 转换为标准的<key，value>键值对，作为 map 的输出。这一步的意义在于只有先进行逻辑拆分并转为标准的键值对格式后，才能为多个 `map` 提供输入，以便进行并行处理。
+
+### 3.2 Combiner
+
+`combiner` 是 `map` 运算后的可选操作，它实际上是一个本地化的 `reduce` 操作，它主要是在 `map` 计算出中间文件后做一个简单的合并重复 `key` 值的操作。
+
+这样做的意义是:减少了从 Map 到 Reduce 的**网络传输量**。如果 Map 产出了 100 万个 `<Hadoop, 1>`，Combiner 会把它变成一个 `<Hadoop, 1000000>`。
+
+> !!**求和、最大值**可以用；**求平均值**绝对不能用（因为局部平均值无法推导出全局平均值）!!
+
+这里以词频统计为例：
+
+`map` 在遇到一个 hadoop 的单词时就会记录为 1，但是这篇文章里 hadoop 可能会出现 n 多次，那么 `map` 输出文件冗余就会很多，因此在 `reduce` 计算前对相同的 key 做一个合并操作，那么需要传输的数据量就会减少，传输效率就可以得到提升。
+
+但并非所有场景都适合使用 `combiner`，使用它的原则是 `combiner` 的输出不会影响到 `reduce` 计算的最终输入，例如：求总数，最大值，最小值时都可以使用 `combiner`，但是做平均值计算则不能使用 `combiner`。
+
+不使用 combiner 的情况：
+
+<img src="../assets/dataDevAssets/1.mapreduce-without-combiners.png" width=50%>
+
+
+
+使用 combiner 的情况：
+
+<img src="../assets/dataDevAssets/1.mapreduce-with-combiners.png" width=50%>
+
+可以看到使用 combiner 的时候，在mapper1内部就进行了一次统计,这样需要传输到 reducer 中的数据由 12keys，降低到 10keys。降低的幅度取决于你 keys 的重复率，下文词频统计案例会演示用 combiner 降低数百倍的传输量。
+
+### 3.3 Partitioner
+
+`partitioner` 可以理解成分类器，将 `map` 的输出按照 key 值的不同分别分给对应的 `reducer`，支持自定义实现，下文案例会给出演示。
+
+**默认逻辑**：`hash(key) % Reducer数量`。
+
+**自定义场景**：如果你想把所有关于“手机号”的数据发往同一个结果文件，或者把特定省份的数据分在一起，就需要自定义 Partitioner。
+
+
+
+
+
+
+
+
+
+## 四、MapReduce词频统计案例
+
+### 4.1 项目简介
+
+这里给出一个经典的词频统计的案例：统计如下样本数据中每个单词出现的次数。
+
+```
+Spark	HBase
+Hive	Flink	Storm	Hadoop	HBase	Spark
+Flink
+HBase	Storm
+HBase	Hadoop	Hive	Flink
+HBase	Flink	Hive	Storm
+Hive	Flink	Hadoop
+HBase	Hive
+Hadoop	Spark	HBase	Storm
+HBase	Hadoop	Hive	Flink
+HBase	Flink	Hive	Storm
+Hive	Flink	Hadoop
+HBase	Hive
+```
+
+
+
+### 4.2 项目依赖
+
+想要进行 MapReduce 编程，需要导入 `hadoop-client` 依赖：
+
+```xml
+<dependency>
+    <groupId>org.apache.hadoop</groupId>
+    <artifactId>hadoop-client</artifactId>
+    <version>${hadoop.version}</version>
+</dependency>
+```
+
+### 4.3 WordCountMapper
+
+将每行数据按照指定分隔符进行拆分。这里需要注意在 MapReduce 中必须使用 Hadoop 定义的类型，因为 Hadoop 预定义的类型都是可序列化，可比较的，所有类型均实现了 `WritableComparable` 接口。
+
+```java
+public class WordCountMapper extends Mapper<LongWritable, Text, Text, IntWritable> {
+
+    @Override
+    protected void map(LongWritable key, Text value, Context context) throws IOException, 
+                                                                      InterruptedException {
+        String[] words = value.toString().split("\t");
+        for (String word : words) {
+            context.write(new Text(word), new IntWritable(1));
+        }
+    }
+
+}
+```
+
+`WordCountMapper` 对应下图的 Mapping 操作：
+
+![1.hadoop-code-mapping](../assets/dataDevAssets/1.hadoop-code-mapping.png)
+
+`WordCountMapper` 继承自 `Mappe` 类，这是一个泛型类，定义如下：
+
+```java
+WordCountMapper extends Mapper<LongWritable, Text, Text, IntWritable>
+
+public class Mapper<KEYIN, VALUEIN, KEYOUT, VALUEOUT> {
+   ......
+}
+```
+
+- **KEYIN** : `mapping` 输入 key 的类型，即每行的偏移量 (每行第一个字符在整个文本中的位置)，`Long` 类型，对应 Hadoop 中的 `LongWritable` 类型；
+- **VALUEIN** : `mapping` 输入 value 的类型，即每行数据；`String` 类型，对应 Hadoop 中 `Text` 类型；
+- **KEYOUT** ：`mapping` 输出的 key 的类型，即每个单词；`String` 类型，对应 Hadoop 中 `Text` 类型；
+- **VALUEOUT**：`mapping` 输出 value 的类型，即每个单词出现的次数；这里用 `int` 类型，对应 `IntWritable` 类型。
+
+
+
+### 4.4 WordCountReducer
+
+
+
+在 Reduce 中进行单词出现次数的统计：
+
+```java
+public class WordCountReducer extends Reducer<Text, IntWritable, Text, IntWritable> {
+
+    @Override
+    protected void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, 
+                                                                                  InterruptedException {
+        int count = 0;
+        for (IntWritable value : values) {
+            count += value.get();
+        }
+        context.write(key, new IntWritable(count));
+    }
+}
+```
+
+如下图，`shuffling` 的输出是 reduce 的输入。这里的 key 是每个单词，values 是一个可迭代的数据类型，类似 `(1,1,1,...)`。
+
+![1.hadoop-code-reducer](../assets/dataDevAssets/1.hadoop-code-reducer.png)
+
+
+
+需要注意的是：如果不设置 `Mapper` 操作的输出类型，则程序默认它和 `Reducer` 操作输出的类型相同。
+
+
+
+## 五、MapReduce 与 YARN 的“握手”流程
+
+**Job 提交**：Client 向 **ResourceManager (RM)** 申请跑任务。
+
+**AM 诞生**：RM 在某个 **NodeManager (NM)** 上启动一个 Container，运行 **MRAppMaster (AM)**。
+
+**计算资源申请**：AM 根据切片数量，向 RM 申请更多的 Container 来跑 MapTask。
+
+**任务分发**：AM 联系各个 NM 启动 **YarnChild**（任务进程），执行具体的 Map 或 Reduce 逻辑。
+
+**状态监控**：AM 全程盯着这群“干活的”，如果谁挂了，AM 负责重试。
+
+
+
+## 六、Shuffle
+
+**Shuffle（洗牌）** 是整个 MapReduce 最具“昂贵”的阶段。
+
+**Shuffle 的定义**：从 Map 输出开始，到 Reduce 输入之前的整个过程。 **核心任务**：将 Map 产生的无序中间结果，按 **Key** 分发到对应的 Reducer，并保证进入 Reducer 的数据是**全局分区有序**的。
+
+
+
+### **1.Map 端的 Shuffle：在“家”先整理**
+
+Map 任务完成后，数据并不是直接写到磁盘的，它经历了一个非常复杂的内存到磁盘的过程。
+
+**① 环形缓冲区 (Circular Buffer)**
+
+Map 的输出首先写入内存中的一个**环形缓冲区**（默认大小 **100MB**）。
+
+- **为什么是环形？** 为了实现一边写一边读（溢写），互不干扰。
+- **80% 阈值**：当缓冲区占用达到 **80%** 时，会启动一个后台线程开始将数据**溢写 (Spill)** 到磁盘。剩下的 20% 空间让 Map 继续写，防止阻塞。
+
+**② 分区、排序与合并 (Sort & Partition & Combine)**
+
+在数据写到磁盘之前，在内存里会发生三件事：
+
+1. **分区 (Partition)**：根据 `key.hashCode() % Reduce数量` 决定这条数据该去哪个 Reducer。
+2. **排序 (Sort)**：在每个分区内部，按照 **Key** 进行**快速排序 (QuickSort)**。
+3. **可选的 Combiner**：如果设置了 Combiner，会在此时进行局部聚合（比如 `(a, 1), (a, 1) -> (a, 2)`），极大地减少磁盘 IO。
+
+**③ 合并溢写文件 (Merge)**
+
+Map 任务结束前，可能会产生很多个溢写出来的临时小文件。Shuffle 会把这些小文件合并成一个**大的有序文件**，并生成一个索引文件，记录每个分区在文件中的起始位置。
+
+
+
+### 2. Reduce 端的 Shuffle：去“别人家”拿货
+
+Reduce 端的工作更像是“跨城取件”。
+
+**① 拉取数据 (Copy/Fetch)**
+
+Reducer 启动后，会通过 HTTP 协议去各个已经完成的 Map 节点“拉取”属于自己的分区数据。
+
+- **并发拉取**：Reducer 会启动多个线程并行地从不同的 Mapper 那里拿数据。
+
+**② 归并排序 (Merge & Sort)**
+
+拉取过来的数据先放在内存，放不下了就写磁盘。
+
+1. **内存合并**：小的片段在内存里直接合并。
+2. **磁盘归并**：由于来自不同 Mapper 的数据块本身已经分区有序，Reducer 只需要进行**归并排序 (MergeSort)**，就能得到一个全局有序的大文件。
+
+③ **分组** (Grouping)
+
+在进入 `reduce()` 方法之前，最后一步是**分组**。它把 Key 相同的所有 Value 放到一个可迭代的集合中（即 `Iterable<V>`）。
+
+
+
+面试很喜欢问:“Shuffle 过程中一共发生了几次排序？分别是什么算法？”
+
+| **排序阶段** | **发生位置**       | **算法**                 | **目的**                                                     |
+| ------------ | ------------------ | ------------------------ | ------------------------------------------------------------ |
+| **第一次**   | Map 端的环形缓冲区 | **快速排序 (QuickSort)** | 当缓冲区达到 $80\%$ 时，在内存中对分区内的数据按 Key 排序。  |
+| **第二次**   | Map 端磁盘溢写文件 | **归并排序 (MergeSort)** | 将多个小的溢写文件合并成一个大的、分区内有序的文件。         |
+| **第三次**   | Reduce 端内存/磁盘 | **归并排序 (MergeSort)** | 将从各个 Map 端拉取过来的数据片段合并成一个全局有序的输入流。 |
+
+
+
+### 3.调优核心
+
+在大厂面试中，如果你能总结出 Shuffle 的成本，层次感就出来了：
+
+1. **磁盘 IO**：Map 端溢写、合并，Reduce 端落盘、归并。一共要经历多次磁盘读写。
+2. **网络带宽**：Reduce 端跨节点拉取数据（Copy 阶段）是集群带宽的最大消耗者。
+3. **CPU 损耗**：由于 Shuffle 过程中伴随大量的数据排序、压缩与解压，对 CPU 压力也很大。
+
+
+
+如果你能背出这两个参数，面试官会觉得你很有实战经验：
+
+- **`mapreduce.task.io.sort.mb`**：环形缓冲区大小（默认 100MB）。如果内存够，调大它可以减少溢写次数。
+- **`mapreduce.map.sort.spill.percent`**：溢写阈值（默认 0.8）。
+- **`mapreduce.job.reduce.slowstart.completedmaps`**：控制 Reduce 什么时候开始拉数据。默认是 Map 完成 5% 后就开始拉，可以改为更高，防止 Reduce 占用 Container 太久却没活干。
 
 
 
