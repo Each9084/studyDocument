@@ -1,4 +1,4 @@
-# 知识体系
+# Ⅰ知识体系
 
 写在前面,按照传输方式对 IO 进行了一个简单的分类
 
@@ -137,7 +137,7 @@ Java IO 中有两种流：
 
 字节流和字符流的区别：
 
-- 字节流一般用来处理图像、视频、音频、PPT、Word等类型的文件。字符流一般用于处理纯文本类型的文件，如TXT文件等，但不能处理图像视频等非文本文件。用一句话说就是：字节流可以处理一切文件，而字符流只能处理纯文本文件。
+- 字节流一般用来处理图像、视频、音频、PPT、Word等类型的文件。字符流一般用于处理纯文本类型的文件，如TXT文件等，但不能处理图像视频等非文本文件。**用一句话说就是：字节流可以处理一切文件，而字符流只能处理纯文本文件。**
 - 字节流本身没有缓冲区，缓冲字节流相对于字节流，效率提升非常高。而字符流本身就带有缓冲区，缓冲字符流相对于字符流效率提升就不是那么大了。
 
 以写文件为例，我们查看字符流的源码，发现确实有利用到缓冲区：
@@ -272,6 +272,10 @@ public class TextCharLab {
 }
 ```
 
+> 这里为-1的原因是 我们的字符流读的是 Unicode 编码,Unicode 字符集里，所有的字符（无论是中文、英文还是符号）对应的数字都是**非负数**（0 到 65535）。同时`read()` 方法在返回这个字节时，做了一个**无符号转换**：假如真的原始数据是-1,那么原始数据就是：`11111111` (byte 类型的 -1),**read() 处理后**：它把这个 8 位的数据变成了 32 位的 int，但高位全部补 0，变成了 `0000...0000 11111111`。**最终结果**：这个 `int` 的值是 **255**。
+>
+> 而-1是我们约定好的退出,-2可不可以?**不行!**
+
 在普通代码里，`try` 后面直接跟大括号 `{}`。但在 IO 操作中，你看到的这种 `try (声明资源)` 叫做 **“带资源的 try 语句” (Try-with-resources)**。
 
 IO 流（文件、网络、数据库连接）是非常占用系统资源的。用完必须关掉。
@@ -402,9 +406,21 @@ public class ImageByteLab {
 
 
 
+##### 3)字节流和字符流对比
 
+| **维度**     | **字节流 Buffer (byte[])**                 | **字符流 Buffer (char[])**                     |
+| ------------ | ------------------------------------------ | ---------------------------------------------- |
+| **包装类**   | `BufferedInputStream`                      | `BufferedReader`                               |
+| **主要用途** | 复制图片、视频、PDF、压缩包                | 读取配置文件、处理文本、按行读写               |
+| **优势**     | **绝对不会损坏文件**，速度最快             | 提供 `readLine()` 等便捷方法，处理中文不乱码   |
+| **风险**     | 读取文本时，如果在中文字节中间切断，会乱码 | **千万不能用来读图片**，会把二进制数据“翻译”坏 |
 
-
+| **场景**                   | **使用 byte (字节流)**       | **使用 char (字符流)**             |
+| -------------------------- | ---------------------------- | ---------------------------------- |
+| **复制一个 MP4 视频**      | **✅ 必须用**（保证文件不坏） | ❌ 绝对不行（视频会变碎纸片）       |
+| **读取一个 .txt 配置文件** | ⚠️ 可以，但处理中文很痛苦     | **✅ 首选**（自动帮你处理乱码）     |
+| **发送一个 JSON 字符串**   | ⚠️ 需要手动转 byte 数组       | **✅ 首选**（配合 `Writer` 很方便） |
+| **上传一张用户头像**       | **✅ 必须用**                 | ❌ 绝对不行                         |
 
 ### 02、操作对象划分
 
@@ -421,6 +437,911 @@ public class ImageByteLab {
 
 #### **1）文件**
 
-文件流也就是直接操作文件的流，可以细分为字节流（FileInputStream 和 FileOuputStream）和字符流（FileReader 和 FileWriter）。
+文件流也就是直接操作文件的流，可以细分为字节流（`FileInputStream` 和 `FileOuputStream`）和字符流（`FileReader` 和 `FileWriter`）。
 
-FileInputStream 的例子：
+`FileInputStream` 的例子：
+
+```java
+// 声明一个 int 类型的变量 b，用于存储读取到的字节
+int b;
+// 创建一个 FileInputStream 对象，用于读取文件 fis.txt 中的数据
+FileInputStream fis1 = new FileInputStream("fis.txt");
+
+// 循环读取文件中的数据
+while ((b = fis1.read()) != -1) {
+    // 将读取到的字节转换为对应的 ASCII 字符，并输出到控制台
+    System.out.println((char)b);
+}
+
+// 关闭 FileInputStream 对象，释放资源
+fis1.close();
+```
+
+`FileOutputStream` 的例子：
+
+```java
+// 创建一个 FileOutputStream 对象，用于写入数据到文件 fos.txt 中
+FileOutputStream fos = new FileOutputStream("fos.txt");
+
+// 向文件中写入数据，这里写入的是字符串 "沉默王二" 对应的字节数组
+fos.write("沉默王二".getBytes());
+
+// 关闭 FileOutputStream 对象，释放资源
+fos.close();
+```
+
+`FileReader` 的例子：
+
+```java
+// 声明一个 int 类型的变量 b，用于存储读取到的字符
+int b = 0;
+
+// 创建一个 FileReader 对象，用于读取文件 read.txt 中的数据
+FileReader fileReader = new FileReader("read.txt");
+
+// 循环读取文件中的数据
+while ((b = fileReader.read()) != -1) {
+    // 将读取到的字符强制转换为 char 类型，并输出到控制台
+    System.out.println((char)b);
+}
+
+// 关闭 FileReader 对象，释放资源
+fileReader.close();
+```
+
+`FileWriter` 的例子：
+
+```java
+// 创建一个 FileWriter 对象，用于写入数据到文件 fw.txt 中
+FileWriter fileWriter = new FileWriter("fw.txt");
+
+// 将字符串 "沉默王二" 转换为字符数组
+char[] chars = "沉默王二".toCharArray();
+
+// 向文件中写入数据，这里写入的是 chars 数组中的所有字符
+fileWriter.write(chars, 0, chars.length);
+
+// 关闭 FileWriter 对象，释放资源
+fileWriter.close();
+```
+
+文件流还可以用于创建、删除、重命名文件等操作。`FileOutputStream` 和 `FileWriter` 构造函数的第二个参数可以指定是否追加数据到文件末尾。
+
+示例代码：
+
+```java
+// 创建文件
+File file = new File("test.txt");
+if (file.createNewFile()) {
+    System.out.println("文件创建成功");
+} else {
+    System.out.println("文件已存在");
+}
+
+// 删除文件
+if (file.delete()) {
+    System.out.println("文件删除成功");
+} else {
+    System.out.println("文件删除失败");
+}
+
+// 重命名文件
+File oldFile = new File("old.txt");
+File newFile = new File("new.txt");
+if (oldFile.renameTo(newFile)) {
+    System.out.println("文件重命名成功");
+} else {
+    System.out.println("文件重命名失败");
+}
+```
+
+当掌握了文件的输入输出，其他的自然也就掌握了，都大差不差。
+
+
+
+#### 2）数组（内存）
+
+通常来说，针对文件的读写操作，使用文件流配合缓冲流就够用了，但为了提升效率，频繁地读写文件并不是太好，那么就出现了数组流，有时候也称为内存流。
+
+为什么"文件流+缓冲流"还不够好?
+
+之前写的 `FileInputStream` + `BufferedInputStream` 已经很牛了，它通过一个小推车（Buffer）减少了去硬盘（Disk）的次数。
+
+但问题在于：**只要目标是硬盘，就一定慢。**
+
+- **物理瓶颈**：硬盘（无论是 HDD 还是 SSD）的速度比内存（RAM）慢成百上千倍。
+- **系统损耗**：读写文件需要通过操作系统内核，频繁地开关文件、寻址、写入，即便有缓冲，依然会有开销。
+
+
+
+不过**数组流**（`ByteArrayInputStream` / `ByteArrayOutputStream`）玩了个“偷梁换柱”：它让你的程序以为在读写文件，**但实际上数据全程都在内存（内存里的字节数组）里打转。**
+
+- **它的本质**：把一块内存（`byte[]`）伪装成一个“流”。
+- **它的逻辑**：
+  - `ByteArrayInputStream`：把一个已有的字节数组，当成数据源，像读文件一样读它。
+  - `ByteArrayOutputStream`：把数据写进一个可以自动增长的内存数组里，写完后你可以直接拿走这个数组。
+
+
+
+wow听起来太棒了,那么既然内存流快得起飞，为什么还要费劲写文件流？ 因为内存有两个致命弱点：
+
+1. **容量小**：你不能把 100GB 的 4K 电影塞进 16GB 的内存流里。
+2. **易失性**：**断电即失！** 如果你只写到数组流里而没存盘，电脑一关，数据就人间蒸发了。
+
+
+
+- **文件流** 是为了 **“长久保存”**。
+
+- **缓冲流** 是为了 **“减少磨损”**（保护硬盘，加速读写）。
+
+- **数组流** 是为了 **“临时中转”**（在内存里快速加工数据，完全不碰硬盘）。
+
+
+
+好了 我们看回`ByteArrayInputStream` 的例子：
+
+```java
+// 创建一个 ByteArrayInputStream 对象，用于从字节数组中读取数据
+InputStream is = new BufferedInputStream(
+        new ByteArrayInputStream(
+                "沉默王二".getBytes(StandardCharsets.UTF_8)));
+
+// 定义一个字节数组用于存储读取到的数据
+byte[] flush = new byte[1024];
+
+// 定义一个变量用于存储每次读取到的字节数
+int len = 0;
+
+// 循环读取字节数组中的数据，并输出到控制台
+while (-1 != (len = is.read(flush))) {
+    // 将读取到的字节转换为对应的字符串，并输出到控制台
+    System.out.println(new String(flush, 0, len));
+}
+
+// 关闭输入流，释放资源
+is.close();
+```
+
+> 这里有的读者可能会疑惑(・∀・(・∀・(・∀・?) 为什么不是flush.read(is),感觉更符合直觉啊?
+>
+> 这里就要提出:在 Java（以及绝大多数面向对象语言）的设计哲学里，**“谁有能力，谁当主语”**。
+
+数组流可以用于在内存中读写数据，比如将数据存储在字节数组中进行压缩、加密、序列化等操作。它的优点是不需要创建临时文件(其他流也不需要,这也是流被设计的意义)，可以提高程序的效率。但是，数组流也有缺点，它只能存储有限的数据量，如果存储的数据量过大，会导致内存溢出。
+
+
+
+#### 3）管道
+
+Java 中的管道和 Unix/Linux 中的管道不同，在 Unix/Linux 中，不同的进程之间可以通过管道来通信，但 Java 中，通信的双方必须在同一个进程中，也就是在同一个 JVM 中，管道为线程之间的通信提供了通信能力。
+
+也就是说 **Unix 管道**更类似于两条高速公路之间的**互通立交桥**（连接两个独立的系统）
+
+ **Java 管道**更像是同一个大厦里两个房间之间的**传声筒**（连接同一个进程里的两个线程）。
+
+
+
+| **特性**     | **Unix/Linux 管道**                         | **Java 管道 (PipedStream)**  |
+| ------------ | ------------------------------------------- | ---------------------------- |
+| **作用范围** | **跨进程**（比如把 `ls` 的结果传给 `grep`） | **同进程/跨线程**            |
+| **内存空间** | 由操作系统内核管理                          | 由 JVM 堆内存管理            |
+| **生命周期** | 随进程存在或作为独立管道文件                | 随 JVM 对象存在              |
+| **实现机制** | 系统级调用，利用内核缓冲区                  | 利用 `byte[]` 循环数组缓冲区 |
+
+然后一个重要的概念就是:**绝对不能在同一个线程里同时操作管道的读和写。**
+
+- **原因**：管道内部有一个固定的缓冲区（默认 1024 字节）。
+- **场景**：如果你在线程 A 里写数据，写满了 1024 字节，管道会**阻塞**（停下来等别人读）。
+- **死锁**：如果这时候还是线程 A 准备去读，因为他已经被“写”动作阻塞住了，根本没机会执行后面的“读”代码。
+- **结果**：整个程序就像是**把自己锁在门外的人**，彻底卡死。
+
+> **职业规则**：使用管道时，必须一个线程专门负责写，另一个线程专门负责读。
+
+当然我们现代Java 开发中，管道流（PipedStream）的出场率其实**并不高**。因为有了更好的,更高效的“线程通信”方式：
+
+1. **BlockingQueue（阻塞队列）**：如果你只是想传输对象或数据块，用 `ArrayBlockingQueue` 会简单得多，而且性能更好。
+2. **消息中间件**：跨进程的通信。
+3. **响应式流 (Reactive Streams)**：处理高并发下的流式数据。
+
+
+
+话说回来,我们还是要对于基础的部分进行了解,一个线程通过 `PipedOutputStream` 写入的数据可以被另外一个线程通过相关联的 `PipedInputStream` 读取出来。
+
+```java
+// 创建一个 PipedOutputStream 对象和一个 PipedInputStream 对象
+final PipedOutputStream pipedOutputStream = new PipedOutputStream();
+final PipedInputStream pipedInputStream = new PipedInputStream(pipedOutputStream);
+
+// 创建一个线程，向 PipedOutputStream 中写入数据
+Thread thread1 = new Thread(new Runnable() {
+    @Override
+    public void run() {
+        try {
+            // 将字符串 "沉默王二" 转换为字节数组，并写入到 PipedOutputStream 中
+            pipedOutputStream.write("沉默王二".getBytes(StandardCharsets.UTF_8));
+            // 关闭 PipedOutputStream，释放资源
+            pipedOutputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+});
+
+// 创建一个线程，从 PipedInputStream 中读取数据并输出到控制台
+Thread thread2 = new Thread(new Runnable() {
+    @Override
+    public void run() {
+        try {
+            // 定义一个字节数组用于存储读取到的数据
+            byte[] flush = new byte[1024];
+            // 定义一个变量用于存储每次读取到的字节数
+            int len = 0;
+            // 循环读取字节数组中的数据，并输出到控制台
+            while (-1 != (len = pipedInputStream.read(flush))) {
+                // 将读取到的字节转换为对应的字符串，并输出到控制台
+                System.out.println(new String(flush, 0, len));
+            }
+            // 关闭 PipedInputStream，释放资源
+            pipedInputStream.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+});
+
+// 启动线程1和线程2
+thread1.start();
+thread2.start();
+```
+
+使用管道流可以实现不同线程之间的数据传输，可以用于线程间的通信、数据的传递等。但是，管道流也有一些局限性，比如只能在同一个 JVM 中的线程之间使用，不能跨越不同的 JVM 进程。
+
+#### 4）基本数据类型
+
+基本数据类型输入输出流是一个字节流，该流不仅可以读写字节和字符，还可以读写基本数据类型。
+
+`DataInputStream` 提供了一系列可以读基本数据类型的方法：
+
+```java
+// 创建一个 DataInputStream 对象，用于从文件中读取数据
+DataInputStream dis = new DataInputStream(new FileInputStream("das.txt"));
+
+// 读取一个字节，将其转换为 byte 类型
+byte b = dis.readByte();
+
+// 读取两个字节，将其转换为 short 类型
+short s = dis.readShort();
+
+// 读取四个字节，将其转换为 int 类型
+int i = dis.readInt();
+
+// 读取八个字节，将其转换为 long 类型
+long l = dis.readLong();
+
+// 读取四个字节，将其转换为 float 类型
+float f = dis.readFloat();
+
+// 读取八个字节，将其转换为 double 类型
+double d = dis.readDouble();
+
+// 读取一个字节，将其转换为 boolean 类型
+boolean bb = dis.readBoolean();
+
+// 读取两个字节，将其转换为 char 类型
+char ch = dis.readChar();
+
+// 关闭 DataInputStream，释放资源
+dis.close();
+```
+
+`DataOutputStream` 提供了一系列可以写基本数据类型的方法：
+
+```java
+// 创建一个 DataOutputStream 对象，用于将数据写入到文件中
+DataOutputStream das = new DataOutputStream(new FileOutputStream("das.txt"));
+
+// 将一个 byte 类型的数据写入到文件中
+das.writeByte(10);
+
+// 将一个 short 类型的数据写入到文件中
+das.writeShort(100);
+
+// 将一个 int 类型的数据写入到文件中
+das.writeInt(1000);
+
+// 将一个 long 类型的数据写入到文件中
+das.writeLong(10000L);
+
+// 将一个 float 类型的数据写入到文件中
+das.writeFloat(12.34F);
+
+// 将一个 double 类型的数据写入到文件中
+das.writeDouble(12.56);
+
+// 将一个 boolean 类型的数据写入到文件中
+das.writeBoolean(true);
+
+// 将一个 char 类型的数据写入到文件中
+das.writeChar('A');
+
+// 关闭 DataOutputStream，释放资源
+das.close();
+```
+
+除了 DataInputStream 和 DataOutputStream，Java IO 还提供了其他一些读写基本数据类型和字符串的流类，包括 ObjectInputStream 和 ObjectOutputStream（用于读写对象）。
+
+示例代码：
+
+```java
+public static void main(String[] args) {
+    try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("person.dat"))) {
+        Person p = new Person("张三", 20);
+        oos.writeObject(p);
+    } catch (IOException e) {
+        e.printStackTrace();
+    }
+
+    try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("person.dat"))) {
+        Person p = (Person) ois.readObject();
+        System.out.println(p);
+    } catch (IOException | ClassNotFoundException e) {
+        e.printStackTrace();
+    }
+}
+```
+
+以上代码创建了一个 Person 对象，将其写入文件中，然后从文件中读取该对象，并打印在控制台上。
+
+除了 `DataInputStream` 和 `DataOutputStream`，Java IO 还提供了其他一些读写基本数据类型和字符串的流类，包括 `ObjectInputStream` 和 `ObjectOutputStream`（用于读写对象）。
+
+
+
+#### 5) 对象读写/序列化
+
+**对象读写（Object I/O）**能把一个内存里活生生的、复杂的 **对象（Object）**，直接“脱水”成字节流存起来，或者在需要的时候“复活”回来。这在专业术语里叫 **序列化（Serialization）** 和 **反序列化（Deserialization）**。
+
+序列化本质上是将一个 Java 对象转成字节数组，然后可以将其保存到文件中，或者通过网络传输到远程。
+
+- **序列化 (Serialization)**：把内存中的对象变成一串字节序列。就像把一头大象变成一箱罐头，方便运输和储存。
+
+- **反序列化 (Deserialization)**：把字节序列恢复为内存中的对象。就像把罐头还原成一头活生生的大象。
+
+
+
+并不是所有的对象都能被序列化。Java 规定：**如果你想让一个类支持序列化，它必须实现 `java.io.Serializable` 接口。**
+
+> **注意**：这个接口里**没有任何方法**。它只是一个“标记接口”，告诉 JVM：“这个类已经通过了安全审查，允许被打包带走。”
+
+对象流也是装饰器流，必须套在字节流外面使用：
+
+1. **`ObjectOutputStream`**：负责写对象。核心方法：**`writeObject(Object obj)`**。
+2. **`ObjectInputStream`**：负责读对象。核心方法：**`readObject()`**。
+
+
+
+**实战演示：如何“瞬间移动”一个用户**
+
+**第一步：准备实体类**
+
+```java
+import java.io.Serializable;
+
+// 必须实现 Serializable 接口
+public class User implements Serializable {
+    // 建议手动指定版本号，防止类修改后无法读取
+    private static final long serialVersionUID = 1L; 
+    
+    private String name;
+    private int age;
+    // transient 关键字：这个属性不会被序列化（比如密码等敏感信息）
+    private transient String password; 
+
+    public User(String name, int age, String password) {
+        this.name = name;
+        this.age = age;
+        this.password = password;
+    }
+
+    @Override
+    public String toString() {
+        return "User{name='" + name + "', age=" + age + ", password='" + password + "'}";
+    }
+}
+```
+
+**第二步：序列化（保存对象）**
+
+```java
+try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream("user.obj"))) {
+    User user = new User("沉默王二", 18, "123456");
+    oos.writeObject(user); // 直接把整个对象丢进去
+    System.out.println("对象已保存到硬盘！");
+} catch (IOException e) {
+    e.printStackTrace();
+}
+```
+
+**第三步：反序列化（读取对象）**
+
+```java
+try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream("user.obj"))) {
+    // readObject 返回的是 Object 类型，需要强转成 User
+    User user = (User) ois.readObject(); 
+    System.out.println("读取到的对象：" + user);
+    // 注意：password 是 transient 标记的，读取出来会是 null
+} catch (IOException | ClassNotFoundException e) {
+    e.printStackTrace();
+}
+```
+
+------
+
+5. 必须掌握的三个关键细节
+
+**A. `transient` 关键字（隐身术）**
+
+如果你不想让对象的某个字段被保存（比如：敏感的银行卡号、临时的缓存数据），就在前面加 `transient`。序列化时会直接跳过它。
+
+**B. `serialVersionUID`（版本识别码）**
+
+这相当于文件的“数字指纹”。
+
+- 如果你不写，Java 会根据你的类结构自动算一个。
+- **坑点**：如果你改了类的一个字段，自动算的号就变了。当你尝试读取旧文件时，Java 会报 `InvalidClassException`，认为这不是同一个类。
+- **职业写法**：手动写死一个 `private static final long serialVersionUID = 1L;`。
+
+**C. 对象的引用树**
+
+如果 `User` 类里包含一个 `Address` 类的对象，那么 `Address` 也必须实现 `Serializable` 接口。否则，在序列化 `User` 时会报错，因为“零件”没法打包。
+
+
+
+**对象流 vs JSON (为什么现在流行 JSON？)**
+
+虽然对象流很牛，但在现在的 Web 开发中，大家更爱用 JSON（如 Jackson, GSON）：
+
+| **特性**       | **对象流 (Object Stream)**                   | **JSON 文本**              |
+| -------------- | -------------------------------------------- | -------------------------- |
+| **平台通用性** | **差**（仅限 Java 语言）                     | **极好**（所有语言通用）   |
+| **可读性**     | **无**（二进制乱码）                         | **好**（人类直接可读）     |
+| **安全性**     | **有风险**（容易被黑客利用进行反序列化攻击） | **相对安全**               |
+| **主要用途**   | Java 内部远程调用 (RMI)、进程间通信          | 网页 API、移动端通讯、配置 |
+
+
+
+#### 6) 缓冲
+
+CPU 很快，它比内存快 100 倍，比磁盘快百万倍。那也就意味着，程序和内存交互会很快，和硬盘交互相对就很慢，这样就会导致性能问题。
+
+为了减少程序和硬盘的交互，提升程序的效率，就引入了缓冲流，也就是类名前缀带有 Buffer 的那些，比如说 `BufferedInputStream`、`BufferedOutputStream`、`BufferedReader`、`BufferedWriter`。
+
+你可以理解为,这里有一堆砖,要运送到目的地,原始的版本(文件到程序)依赖字节流,那么就是一砖一砖的搬运,大量时间消耗在了单个砖块的搬运来回时间里了,但是缓冲则是,等一下,让砖尽可能装的多,然后一次性运过去.
+
+缓冲的操作逻辑可以概括为：**“攒够了再说”**。
+
+![shangtou-04](../assets/javaAssets/shangtou-04.png)
+
+缓冲流在内存中设置了一个缓冲区，只有缓冲区存储了足够多的带操作的数据后，才会和内存或者硬盘进行交互。简单来说，就是一次多读/写点，少读/写几次，这样程序的性能就会提高。
+
+以下是一个使用 `BufferedInputStream` 读取文件的示例代码：
+
+```java
+// 创建一个 BufferedInputStream 对象，用于从文件中读取数据
+BufferedInputStream bis = new BufferedInputStream(new FileInputStream("data.txt"));
+
+// 创建一个字节数组，作为缓存区
+byte[] buffer = new byte[1024];
+
+// 读取文件中的数据，并将其存储到缓存区中
+int bytesRead;
+while ((bytesRead = bis.read(buffer)) != -1) {
+    // 对缓存区中的数据进行处理
+    // 这里只是简单地将读取到的字节数组转换为字符串并打印出来
+    System.out.println(new String(buffer, 0, bytesRead));
+}
+
+// 关闭 BufferedInputStream，释放资源
+bis.close();
+```
+
+上述代码中，首先创建了一个 `BufferedInputStream` 对象，用于从文件中读取数据。然后创建了一个字节数组作为缓存区，每次读取数据时将数据存储到缓存区中。读取数据的过程是通过 while 循环实现的，每次读取数据后对缓存区中的数据进行处理。最后关闭 `BufferedInputStream`，释放资源。
+
+以下是一个使用 `BufferedOutputStream` 写入文件的示例代码：
+
+```java
+// 创建一个 BufferedOutputStream 对象，用于将数据写入到文件中
+BufferedOutputStream bos = new BufferedOutputStream(new FileOutputStream("data.txt"));
+
+// 创建一个字节数组，作为缓存区
+byte[] buffer = new byte[1024];
+
+// 将数据写入到文件中
+String data = "沉默王二是个大傻子!";
+buffer = data.getBytes();
+bos.write(buffer);
+
+// 刷新缓存区，将缓存区中的数据写入到文件中
+bos.flush();
+
+// 关闭 BufferedOutputStream，释放资源
+bos.close();
+```
+
+上述代码中，首先创建了一个 `BufferedOutputStream` 对象，用于将数据写入到文件中。然后创建了一个字节数组作为缓存区，将数据写入到缓存区中。写入数据的过程是通过 write() 方法实现的，将字节数组作为参数传递给 write() 方法即可。
+
+最后，通过 flush() 方法将缓存区中的数据写入到文件中。在写入数据时，由于使用了 `BufferedOutputStream`，数据会先被写入到缓存区中，只有在缓存区被填满或者调用了 flush() 方法时才会将缓存区中的数据写入到文件中。
+
+以下是一个使用 `BufferedReader` 读取文件的示例代码：
+
+```java
+// 创建一个 BufferedReader 对象，用于从文件中读取数据
+BufferedReader br = new BufferedReader(new FileReader("data.txt"));
+
+// 读取文件中的数据，并将其存储到字符串中
+String line;
+while ((line = br.readLine()) != null) {
+    // 对读取到的数据进行处理
+    // 这里只是简单地将读取到的每一行字符串打印出来
+    System.out.println(line);
+}
+
+// 关闭 BufferedReader，释放资源
+br.close();
+```
+
+上述代码中，首先创建了一个 `BufferedReader` 对象，用于从文件中读取数据。然后使用 `readLine()` 方法读取文件中的数据，每次读取一行数据并将其存储到一个字符串中。读取数据的过程是通过 while 循环实现的。
+
+以下是一个使用 `BufferedWriter` 写入文件的示例代码：
+
+```java
+// 创建一个 BufferedWriter 对象，用于将数据写入到文件中
+BufferedWriter bw = new BufferedWriter(new FileWriter("data.txt"));
+
+// 将数据写入到文件中
+String data = "沉默王二，真帅气";
+bw.write(data);
+
+// 刷新缓存区，将缓存区中的数据写入到文件中
+bw.flush();
+
+// 关闭 BufferedWriter，释放资源
+bw.close();
+```
+
+上述代码中，首先创建了一个 `BufferedWriter` 对象，用于将数据写入到文件中。然后使用 write() 方法将数据写入到缓存区中，写入数据的过程和使用 `FileWriter` 类似。需要注意的是，使用 `BufferedWriter` 写入数据时，数据会先被写入到缓存区中，只有在缓存区被填满或者调用了 flush() 方法时才会将缓存区中的数据写入到文件中。
+
+最后，通过 flush() 方法将缓存区中的数据写入到文件中，并通过 close() 方法关闭 BufferedWriter，释放资源。
+
+使用缓冲流可以提高读写效率，减少了频繁的读写磁盘或网络的次数，从而提高了程序的性能。但是，在使用缓冲流时需要注意缓冲区的大小和清空缓冲区的时机，以避免数据丢失或不完整的问题。
+
+
+
+**工具箱**
+
+| **类别**     | **基础流（没缓冲）** | **缓冲增强流（有缓冲）**   | **默认缓冲区大小** |
+| ------------ | -------------------- | -------------------------- | ------------------ |
+| **字节流**   | `FileInputStream`    | **`BufferedInputStream`**  | 8192 Bytes (8KB)   |
+| **字节输出** | `FileOutputStream`   | **`BufferedOutputStream`** | 8192 Bytes (8KB)   |
+| **字符流**   | `FileReader`         | **`BufferedReader`**       | 8192 Chars         |
+| **字符输出** | `FileWriter`         | **`BufferedWriter`**       | 8192 Chars         |
+
+
+
+虽然缓冲很好，但如果不理解它的脾气，代码会出大 Bug。
+
+**A. 数据的“失踪”：忘记 Flush**
+
+- **现象**：你写了数据，程序也没报错，但打开文件一看，后面少了一截。
+- **原因**：数据还憋在“写缓冲区（桶）”里，没攒够 8KB，它不肯去硬盘。
+- **对策**：必须调用 `.flush()`（强制清空桶）或 `.close()`（关门前自动清空）。
+
+**B. 内存的溢出：缓冲区过大**
+
+- **现象**：程序跑着跑着就 `OutOfMemoryError`。
+- **原因**：你可能为了追求极致速度，把 Buffer 设成了 1GB。如果并发量大，内存瞬间被填满。
+- **对策**：默认的 **8KB** 是经过科学测算的平衡点，除非你有特殊需求，否则不要乱改。
+
+**C. 实时性的丧失**
+
+- **现象**：在聊天软件里，你发了一条消息，对方半天收不到，直到你发了第十条才一起弹出来。
+- **原因**：缓冲导致的延迟。
+- **对策**：对于需要实时反馈的场景（如 Socket 通讯），要频繁调用 `flush()` 或者干脆关掉缓冲。
+
+
+
+**什么时候不需要缓冲？**
+
+- **数据量极小时**：如果你只读 10 个字节，开个 8KB 的缓冲反而浪费内存。
+- **底层已经有缓冲时**：有些现代操作系统和硬盘硬件本身就有几百 MB 的缓存，这时候在 Java 层再加缓冲，收益会递减。
+- **内存流 (`ByteArrayStream`)**：它本身就是在操作内存，再加缓冲就是“内存拷内存”，纯属浪费 CPU。
+
+
+
+总结一下,缓冲就是用“空间（内存）”换取“时间（性能）”。它通过减少**系统调用**和**物理设备寻址**的次数，让原本笨重的 IO 操作变得轻盈。<span style="color:red">在 Java 中，如果你不确定要不要加缓冲，**加（Buffer）通常是不会错的默认选择。**</span>
+
+
+
+#### 7) 打印
+
+Java 的打印流是一组用于打印输出数据的类，包括 PrintStream 和 PrintWriter 两个类。
+
+恐怕 Java 程序员一生当中最常用的就是打印流了：`System.out` 其实返回的就是一个 `PrintStream` 对象，可以用来打印各式各样的对象。
+
+```java
+System.out.println("我是午餐肉大侠！");
+```
+
+`PrintStream` 最终输出的是字节数据，而 `PrintWriter` 则是扩展了 Writer 接口，所以它的 `print()/println()` 方法最终输出的是字符数据。使用上几乎和 `PrintStream` 一模一样。
+
+
+
+#### 8) 转换
+
+`InputStreamReader` 是从字节流到字符流的桥连接，它使用指定的字符集读取字节并将它们解码为字符。
+
+```java
+// 创建一个 InputStreamReader 对象 isr，使用 FileInputStream 对象读取文件 demo.txt 的内容并将其转换为字符流
+InputStreamReader isr = new InputStreamReader(new FileInputStream("demo.txt"));
+
+// 创建一个字符数组 cha，用于存储读取的字符数据，其中 1024 表示数组的长度
+char[] cha = new char[1024];
+
+// 使用 read() 方法读取 isr 中的数据，并将读取的字符数据存储到 cha 数组中，返回值 len 表示读取的字符数
+int len = isr.read(cha);
+
+// 将 cha 数组中从下标 0 开始、长度为 len 的部分转换成字符串，并输出到控制台
+System.out.println(new String(cha, 0, len));
+
+// 关闭 InputStreamReader 对象 isr，释放资源
+isr.close();
+```
+
+使用转换流可以方便地在字节流和字符流之间进行转换。在进行文本文件读写时，通常使用字符流进行操作，而在进行网络传输或与设备进行通信时，通常使用字节流进行操作。
+
+另外，在使用转换流时需要注意字符编码的问题。如果不指定字符编码，则使用默认的字符编码，可能会出现乱码问题。因此，建议在使用转换流时，始终指定正确的字符编码，以避免出现乱码问题。
+
+
+
+
+
+# Ⅱ 文件流
+
+在 IO 操作中，文件的操作相对来说是比较复杂的，但也是使用频率最高的部分，我们几乎所有的项目中几乎都躺着一个叫做 FileUtil 或者 FileUtils 的工具类。
+
+`java.io.File` 类是专门对文件进行操作的类，注意只能对文件本身进行操作，不能对文件内容进行操作，想要操作内容，必须借助输入输出流。
+
+`File` 类是文件和目录的抽象表示，主要用于文件和目录的创建、查找和删除等操作。
+
+怎么理解上面两句话？其实很简单！
+
+第一句是说 File 跟流无关，File 类不能对文件进行读和写，也就是输入和输出！
+
+第二句是说 File 可以表示`D:\\文件目录1`与`D:\\文件目录1\\文件.txt`，前者是文件夹（Directory，或者叫目录）后者是文件(file)，File 类就是用来操作它俩的。
+
+
+
+## 一、File 构造方法
+
+在 Java 中，一切皆是对象，File 类也不例外，不论是哪个对象都应该从该对象的构造说起，所以我们来分析分析`File`类的构造方法。
+
+比较常用的构造方法有三个：
+
+1、 `File(String pathname)` ：通过给定的**路径**来创建新的 File 实例。
+
+2、 `File(String parent, String child)` ：从**父路径（字符串）和子路径**创建新的 File 实例。
+
+3、 `File(File parent, String child)` ：从**父路径（File）和子路径名字符串**创建新的 File 实例。
+
+> **`File` 对象的创建，并不会在你的硬盘上生成任何文件。**
+>
+> 1. 一个 File 对象代表硬盘中实际存在的一个文件或者目录。
+> 2. File 类的构造方法不会检验这个文件或目录是否真实存在，因此无论该路径下是否存在文件或者目录，都不影响 File 对象的创建。
+
+它仅仅是在内存里创建了一个**路径标识符**。
+
+- 如果你想看这个路径代表的东西到底在不在，得调 `file.exists()`。
+- 如果你想真的创建一个文件，得调 `file.createNewFile()`。
+- 如果你想创建一个文件夹，得调 `file.mkdir()`。
+
+看文字描述不够生动、不够形象、不得劲？没事，通过举例马上就生动形象了，代码如下：
+
+```java
+// 文件路径名
+String path = "/Users/username/123.txt";
+File file1 = new File(path);
+// 文件路径名
+String path2 = "/Users/username/1/2.txt";
+File file2 = new File(path2); -------------相当于/Users/username/1/2.txt
+// 通过父路径和子路径字符串
+String parent = "/Users/username/aaa";
+String child = "bbb.txt";
+File file3 = new File(parent, child); --------相当于/Users/username/aaa/bbb.txt
+// 通过父级File对象和子路径字符串
+File parentDir = new File("/Users/username/aaa");
+String child = "bbb.txt";
+File file4 = new File(parentDir, child); --------相当于/Users/username/aaa/bbb.txt
+```
+
+为什么要通过这么多构造函数而不是`parent + "/" + child`呢?
+
+**原因有二：**
+
+**A. 跨平台安全（最重要！）**
+
+- **Windows** 使用反斜杠 `\`（比如 `C:\123.txt`）。
+- **Linux/Mac** 使用正斜杠 `/`（比如 `/Users/123.txt`）。
+- 如果你自己用字符串拼接路径，换个系统可能就崩了。而使用 `new File(parent, child)`，Java 会自动根据你的操作系统填入正确的**路径分隔符**。
+
+**B. 避免“拼接车祸”**
+
+手动拼接字符串经常会漏掉或者多写一个斜杠，比如 `"/Users/username/" + "/123.txt"` 会变成 `//123.txt`。Java 的构造函数会自动帮你处理掉这些多余的斜杠，确保路径合法。
+
+
+
+Java 中提供了一个跨平台的方法来获取路径分隔符，即使用 `File.separator`，这个属性会根据操作系统自动返回正确的路径分隔符。
+
+
+
+## 二、File 常用方法
+
+File 的常用方法主要分为获取功能、获取绝对路径和相对路径、判断功能、创建删除功能的方法。
+
+### **1）获取功能的方法**
+
+1、`getAbsolutePath()` ：返回此 File 的绝对路径。
+
+2、`getPath()` ：结果和 getAbsolutePath 一致。
+
+3、`getName()` ：返回文件名或目录名。
+
+4、`length()` ：返回文件长度，以字节为单位。
+
+测试代码如下【注意测试以你自己的电脑文件夹为准】：
+
+```java
+File f = new File("/Users/username/aaa/bbb.java");
+System.out.println("文件绝对路径:"+f.getAbsolutePath());
+System.out.println("文件构造路径:"+f.getPath());
+System.out.println("文件名称:"+f.getName());
+System.out.println("文件长度:"+f.length()+"字节");
+
+File f2 = new File("/Users/username/aaa");
+System.out.println("目录绝对路径:"+f2.getAbsolutePath());
+System.out.println("目录构造路径:"+f2.getPath());
+System.out.println("目录名称:"+f2.getName());
+System.out.println("目录长度:"+f2.length());
+```
+
+注意：`length()` 表示文件的长度，`File` 对象表示目录的时候，返回值并无意义。
+
+
+
+### 2) 绝对路径和相对路径
+
+绝对路径是从文件系统的根目录开始的完整路径，它描述了一个文件或目录在文件系统中的确切位置。在 Windows 系统中，绝对路径通常以盘符（如 C:）开始，例如 "`C:\Program Files\Java\jdk1.8.0_291\bin\java.exe`"。在 macOS 和 Linux 系统中，绝对路径通常以斜杠（`/`）开始，例如 "`/usr/local/bin/python3`"。
+
+相对路径是相对于当前工作目录的路径，它描述了一个文件或目录与当前工作目录之间的位置关系。在 Java 中，相对路径通常是相对于当前 Java 程序所在的目录，例如 "`config/config.properties`"。如果当前工作目录是 "`/Users/username/project`"，那么相对路径 "`config/config.properties`" 就表示 "`/Users/username/project/config/config.properties`"。
+
+注意：
+
+- 在 Windows 操作系统中，文件系统默认是不区分大小写的，即在文件系统中，文件名和路径的大小写可以混合使用。例如，"`C:\Users\username\Documents\example.txt`" 和 "`C:\Users\Username\Documents\Example.txt`" 表示的是同一个文件。但是，Windows 操作系统提供了一个区分大小写的选项，可以在格式化磁盘时选择启用，这样文件系统就会区分大小写。
+- 在 macOS 和 Linux 等 Unix 系统中，文件系统默认是区分大小写的。例如，在 macOS 系统中，"`/Users/username/Documents/example.txt`" 和 "`/Users/username/Documents/Example.txt`" 表示的是两个不同的文件。
+
+```java
+// 绝对路径示例
+File absoluteFile = new File("/Users/username/example/test.txt");
+System.out.println("绝对路径：" + absoluteFile.getAbsolutePath());
+
+// 相对路径示例
+File relativeFile = new File("example/test.txt");
+System.out.println("相对路径：" + relativeFile.getPath());
+```
+
+
+
+### 3）判断功能的方法
+
+1、 `exists()` ：判断文件或目录是否存在。
+
+2、 `isDirectory()` ：判断是否为目录。
+
+3、`isFile()` ：判断是否为文件。
+
+方法演示，代码如下：
+
+```java
+File file = new File("/Users/username/example");
+
+// 判断文件或目录是否存在
+if (file.exists()) {
+    System.out.println("文件或目录存在");
+} else {
+    System.out.println("文件或目录不存在");
+}
+
+// 判断是否是目录
+if (file.isDirectory()) {
+    System.out.println("是目录");
+} else {
+    System.out.println("不是目录");
+}
+
+// 判断是否是文件
+if (file.isFile()) {
+    System.out.println("是文件");
+} else {
+    System.out.println("不是文件");
+}
+```
+
+
+
+### 4）创建、删除功能的方法
+
+- `createNewFile()` ：文件不存在，创建一个新的空文件并返回`true`，文件存在，不创建文件并返回`false`。
+- `delete()` ：删除文件或目录。如果是目录，只有目录为空才能删除。
+- `mkdir()` ：只能创建一级目录，如果父目录不存在，则创建失败。返回 true 表示创建成功，返回 false 表示创建失败。
+- `mkdirs()` ：可以创建多级目录，如果父目录不存在，则会一并创建。返回 true 表示创建成功，返回 false 表示创建失败或目录已经存在。
+
+**开发中一般用**`mkdirs()`;
+
+方法测试，代码如下：
+
+```java
+// 创建文件
+File file = new File("/Users/username/example/test.txt");
+if (file.createNewFile()) {
+    System.out.println("创建文件成功：" + file.getAbsolutePath());
+} else {
+    System.out.println("创建文件失败：" + file.getAbsolutePath());
+}
+
+// 删除文件
+if (file.delete()) {
+    System.out.println("删除文件成功：" + file.getAbsolutePath());
+} else {
+    System.out.println("删除文件失败：" + file.getAbsolutePath());
+}
+
+// 创建多级目录
+File directory = new File("/Users/username/example/subdir1/subdir2");
+if (directory.mkdirs()) {
+    System.out.println("创建目录成功：" + directory.getAbsolutePath());
+} else {
+    System.out.println("创建目录失败：" + directory.getAbsolutePath());
+}
+```
+
+
+
+### 5）目录的遍历
+
+- `String[] list()` ：返回一个 String 数组，表示该 File 目录中的所有子文件或目录。
+- `File[] listFiles()` ：返回一个 File 数组，表示该 File 目录中的所有的子文件或目录。
+
+```java
+File directory = new File("/Users/itwanger/Documents/Github/paicoding");
+
+// 列出目录下的文件名
+String[] files = directory.list();
+System.out.println("目录下的文件名：");
+for (String file : files) {
+    System.out.println(file);
+}
+
+// 列出目录下的文件和子目录
+File[] filesAndDirs = directory.listFiles();
+System.out.println("目录下的文件和子目录：");
+for (File fileOrDir : filesAndDirs) {
+    if (fileOrDir.isFile()) {
+        System.out.println("文件：" + fileOrDir.getName());
+    } else if (fileOrDir.isDirectory()) {
+        System.out.println("目录：" + fileOrDir.getName());
+    }
+}
+```
+
+**listFiles**在获取指定目录下的文件或者子目录时必须满足下面两个条件：
+
+- **指定的目录必须存在**
+- **指定的必须是目录。否则容易引发 `NullPointerException` 异常**
+
