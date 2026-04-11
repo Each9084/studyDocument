@@ -1345,3 +1345,618 @@ for (File fileOrDir : filesAndDirs) {
 - **指定的目录必须存在**
 - **指定的必须是目录。否则容易引发 `NullPointerException` 异常**
 
+
+
+### 6）递归遍历
+
+不说啥了，直接上代码：
+
+```java
+public static void main(String[] args) {
+    File directory = new File("/Users/itwanger/Documents/Github/paicoding");
+
+    // 递归遍历目录下的文件和子目录
+    traverseDirectory(directory);
+}
+
+public static void traverseDirectory(File directory) {
+    // 列出目录下的所有文件和子目录
+    File[] filesAndDirs = directory.listFiles();
+
+    // 遍历每个文件和子目录
+    for (File fileOrDir : filesAndDirs) {
+        if (fileOrDir.isFile()) {
+            // 如果是文件，输出文件名
+            System.out.println("文件：" + fileOrDir.getName());
+        } else if (fileOrDir.isDirectory()) {
+            // 如果是目录，递归遍历子目录
+            System.out.println("目录：" + fileOrDir.getName());
+            traverseDirectory(fileOrDir);
+        }
+    }
+}
+```
+
+> <span style="color:red">这个其实很多地方可以用到</span>
+
+
+
+### 7) RandomAccessFile
+
+`RandomAccessFile` 是 Java 中一个非常特殊的类，它既可以用来读取文件，也可以用来写入文件。与其他 IO 类（如 `FileInputStream` 和 `FileOutputStream`）不同，`RandomAccessFile` 允许您跳转到文件的任何位置，从那里开始读取或写入。这使得它特别适用于需要在文件中随机访问数据的场景，如数据库系统。
+
+类比于:Java IO 里的其他流是只能一路走到底的**“单行道”**（或者是从头卷到尾的“磁带”），那么 `RandomAccessFile` 就是一个带有**“进度条”**的视频播放器，或者是一个可以**随时翻页**的笔记本。
+
+下面是一个使用 `RandomAccessFile` 的示例，包括写入和读取文件：
+
+#### ①File Pointer
+
+`RandomAccessFile` 的强大全靠一根**“看不见的针”**。
+
+在普通流里，你读了一个字节，指针就自动往后挪一个，你没法回头。但在 `RandomAccessFile` 里，你可以通过代码自由移动这根针：
+
+- **`getFilePointer()`**：告诉你这根针现在在哪（当前字节位置）。
+- **`seek(long pos)`**：强行把针拨到指定的地点。
+
+
+
+#### ②常用构造
+
+`RandomAccessFile` 主要有两个构造方法：
+
+- `RandomAccessFile(File file, String mode)`：使用给定的文件对象和访问模式创建一个新的 `RandomAccessFile` 实例。
+- `RandomAccessFile(String name, String mode)`：使用给定的文件名和访问模式创建一个新的 `RandomAccessFile` 实例。
+
+
+
+#### ③模式参数
+
+当你创建一个 `RandomAccessFile` 时，你必须告诉它你的意图（Mode）：
+
+- **`"r"`**：只读模式。如果文件不存在，直接报错。
+- **`"rw"`**：读写模式。如果文件不存在，它会自动帮你创建一个。
+- **`"rws"` / `"rwd"`**：进阶读写模式，确保数据实时同步到硬盘（防止断电丢失）。
+
+```java
+// 以读写模式打开
+RandomAccessFile raf = new RandomAccessFile("test.txt", "rw");
+```
+
+
+
+#### ④应用场景
+
+既然普通的流已经能读写文件了，为什么还要搞个这么复杂的家伙？
+
+**场景 A：断点续传（下载神器）**
+
+想象你在下载一个 1GB 的文件，下到 500MB 时断网了。
+
+- **普通流**：下次必须从 0 开始重新写。
+- **RandomAccessFile**：它先看一眼本地文件已经有 500MB 了，直接 `seek(500 * 1024 * 1024)`，然后接着往后写。
+
+**场景 B：多线程下载**
+
+我们可以开 4 个线程，每个线程负责下载文件的 1/4。
+
+- 线程 1：`seek(0)` 开始写。
+- 线程 2：`seek(250MB)` 开始写。
+- ...以此类推。大家在同一个文件里“分头行动”，互不干扰。
+
+**场景 C：修改文件中间的内容**
+
+如果你想改一个 1GB 文件中间的第 100 个字节。
+
+- **普通流**：你得把前 99 个字节读出来存着，改掉第 100 个，再把剩下的全写回去（效率极低）。
+- **`RandomAccessFile`**：直接 `seek(99)`，然后 `write(data)`。搞定！
+
+
+
+### 8) Apache FileUtils 类
+
+`FileUtils` 类是 Apache Commons IO 库中的一个类，提供了一些更为方便的方法来操作文件或目录。
+
+#### 1）复制文件或目录：
+
+```java
+File srcFile = new File("path/to/src/file");
+File destFile = new File("path/to/dest/file");
+// 复制文件
+FileUtils.copyFile(srcFile, destFile);
+// 复制目录
+FileUtils.copyDirectory(srcFile, destFile);
+```
+
+
+
+#### 2）删除文件或目录：
+
+```java
+File file = new File("path/to/file");
+// 删除文件或目录
+FileUtils.delete(file);
+```
+
+需要注意的是，如果要删除一个非空目录，需要先删除目录中的所有文件和子目录。
+
+
+
+#### 3）移动文件或目录：
+
+```java
+File srcFile = new File("path/to/src/file");
+File destFile = new File("path/to/dest/file");
+// 移动文件或目录
+FileUtils.moveFile(srcFile, destFile);
+```
+
+
+
+#### 4）查询文件或目录的信息：
+
+```java
+File file = new File("path/to/file");
+// 获取文件或目录的修改时间
+Date modifyTime = FileUtils.lastModified(file);
+// 获取文件或目录的大小
+long size = FileUtils.sizeOf(file);
+// 获取文件或目录的扩展名
+String extension = FileUtils.getExtension(file.getName());
+```
+
+
+
+### 9)Hutool FileUtil 类
+
+FileUtil 类是 [Hutool](https://hutool.cn/) 工具包中的文件操作工具类，提供了一系列简单易用的文件操作方法，可以帮助 Java 开发者快速完成文件相关的操作任务。
+
+FileUtil 类包含以下几类操作工具：
+
+- 文件操作：包括文件目录的新建、删除、复制、移动、改名等
+- 文件判断：判断文件或目录是否非空，是否为目录，是否为文件等等。
+- 绝对路径：针对 ClassPath 中的文件转换为绝对路径文件。
+- 文件名：主文件名，扩展名的获取
+- 读操作：包括 getReader、readXXX 操作
+- 写操作：包括 getWriter、writeXXX 操作
+
+下面是 FileUtil 类中一些常用的方法：
+
+1、copyFile：复制文件。该方法可以将指定的源文件复制到指定的目标文件中。
+
+```java
+File dest = FileUtil.file("FileUtilDemo2.java");
+FileUtil.copyFile(file, dest);
+```
+
+2、move：移动文件或目录。该方法可以将指定的源文件或目录移动到指定的目标文件或目录中。
+
+```java
+FileUtil.move(file, dest, true);
+```
+
+3、del：删除文件或目录。该方法可以删除指定的文件或目录，如果指定的文件或目录不存在，则会抛出异常。
+
+```java
+FileUtil.del(file);
+```
+
+4、rename：重命名文件或目录。该方法可以将指定的文件或目录重命名为指定的新名称。
+
+```java
+FileUtil.rename(file, "FileUtilDemo3.java", true);
+```
+
+5、readLines：从文件中读取每一行数据。
+
+```java
+FileUtil.readLines(file, "UTF-8").forEach(System.out::println);
+```
+
+更多方法，可以去看一下 hutool 的源码，里面有非常多实用的方法，多看看，绝对能提升不少编程水平。
+
+
+
+# Ⅲ 字节流
+
+**Java 字节流：Java IO 的基石**
+
+我们必须得明确一点，一切文件（文本、视频、图片）的数据都是以二进制的形式存储的，传输时也是。所以，字节流可以传输任意类型的文件数据。
+
+
+
+## 一、  字节输出流（OutputStream）
+
+`java.io.OutputStream` 是**字节输出流**的**超类**（父类），我们来看一下它定义的一些共性方法：
+
+1、 `close()` ：关闭此输出流并释放与此流相关联的系统资源。
+
+2、 `flush()` ：刷新此输出流并强制缓冲区的字节被写入到目的地。
+
+3、 `write(byte[] b)`：将 b.length 个字节从指定的字节数组写入此输出流。
+
+4、 `write(byte[] b, int off, int len)` ：从指定的字节数组写入 len 字节到此输出流，从偏移量 off开始。 **也就是说从off个字节数开始一直到len个字节结束**
+
+
+
+### 二、`FileOutputStream`类
+
+`OutputStream` 有很多子类，我们从最简单的一个子类 `FileOutputStream` 开始。看名字就知道是文件输出流，用于将数据写入到文件。
+
+#### 1）`FileOutputStrea` 的构造方法
+
+1、使用文件名创建 `FileOutputStream` 对象。
+
+```java
+String fileName = "example.txt";
+FileOutputStream fos = new FileOutputStream(fileName);
+```
+
+以上代码使用文件名 "example.txt" 创建一个 `FileOutputStream` 对象，将数据写入到该文件中。**如果文件不存在，则创建一个新文件；如果文件已经存在，则覆盖原有文件**。
+
+2、使用文件对象创建 `FileOutputStream` 对象。
+
+```java
+File file = new File("example.txt");
+FileOutputStream fos = new FileOutputStream(file);
+```
+
+`FileOutputStream` 的使用示例：
+
+```java
+FileOutputStream fos = null;
+try {
+  fos = new FileOutputStream("example.txt");
+  fos.write("午餐肉大侠".getBytes());
+} catch (IOException e) {
+  e.printStackTrace();
+} finally {
+  if (fos != null) {
+    try {
+      fos.close();
+    } catch (IOException e) {
+      e.printStackTrace();
+    }
+  }
+}
+```
+
+以上代码创建了一个 `FileOutputStream` 对象，将字符串 "午餐肉大侠" 写入到 example.txt 文件中，并在最后关闭了输出流。
+
+当然上面你仔细看会很繁琐,所以我们强烈推荐try-with-resources
+
+```java
+// 这样写，Java 会自动帮你完成 null 检查、close() 调用、以及处理异常屏蔽
+try (FileOutputStream fos = new FileOutputStream("src/assets/example.txt")) {
+    fos.write("午餐肉大侠".getBytes());
+} catch (IOException e) {
+    e.printStackTrace();
+}
+```
+
+一定要写在 `try()` 里才能帮你去自动完成,<span style="color:red">在 `try(...)` 括号里定义的变量，默认是 `final`（不可变的）。不能在花括号 `{}` 里面再给它重新赋值。</span>
+
+这是因为 `try-with-resources` 是一种**语法糖**。
+
+- **如果没写在 `()` 里**：那这就是一个普通的 `try` 块。Java 编译器会认为你只是想抓个异常，它并不知道你还想顺便关个流。
+- **如果写在 `()` 里**：编译器在翻译代码时，会自动在后台帮你补全那个繁琐的的 `finally { if (fos != null) { fos.close(); } }`。
+
+
+
+#### 2）`FileOutputStream` 写入字节数据
+
+使用 `FileOutputStream` 写入字节数据主要通过 `write` 方法：
+
+```java
+write(int b)
+write(byte[] b)
+write(byte[] b,int off,int len)  //从`off`索引开始，`len`个字节
+```
+
+##### ①、**写入字节**：`write(int b)` 方法，每次可以写入一个字节，代码如下：
+
+```java
+// 使用文件名称创建流对象
+FileOutputStream fos = new FileOutputStream("fos.txt");     
+// 写出数据
+fos.write(97); // 第1个字节
+fos.write(98); // 第2个字节
+fos.write(99); // 第3个字节
+// 关闭资源
+fos.close();
+```
+
+字符 a 的 ASCII 值为 97，字符 b 的ASCII 值为 98，字符 b 的ASCII 值为 99。也就是说，以上代码可以写成：
+
+```java
+// 使用文件名称创建流对象
+FileOutputStream fos = new FileOutputStream("fos.txt");     
+// 写出数据
+fos.write('a'); // 第1个字节
+fos.write('b'); // 第2个字节
+fos.write('c'); // 第3个字节
+// 关闭资源
+fos.close();
+```
+
+当使用 `write(int b)` 方法写出一个字节时，参数 b 表示要写出的字节的整数值。由于一个字节只有8位，因此参数 b 的取值范围应该在 0 到 255 之间，超出这个范围的值将会被截断。例如，如果参数 b 的值为 -1，那么它会被截断为 255，如果参数 b 的值为 256，那么它会被截断为 0。
+
+在将参数 b 写入输出流中时，write(int b) 方法只会将参数 b 的低8位写入，而忽略高24位。这是因为在 Java 中，整型类型（包括 byte、short、int、long）在内存中以二进制补码形式表示。当将一个整型值传递给 write(int b) 方法时，方法会将该值转换为 byte 类型，只保留二进制补码的低8位，而忽略高24位。
+
+你可以理解为在 Java 中，`int` 是一个 **32 位**的“大胖子”，而 `write` 方法要求的字节（byte）是一个 **8 位**的“窄门”。当你强行把大胖子塞进窄门时，多出来的部分（高位）就被**无情地削掉**了。
+
+Java 的 `int` 类型在内存里占 4 个字节（32 位）。而磁盘文件最小的存储单位是 1 个字节（8 位）。
+
+当你调用 `fos.write(0x12345678)` 时：
+
+- **原始数据**：`12 34 56 78`（十六进制，每两个数字是一个字节）
+- **写出数据**：`write` 方法只看最后那 **2 位**十六进制数（即低 8 位）。
+- **结果**：它只把 `78` 写到了文件里，前面的 `12 34 56` 全都被扔进了垃圾桶。
+
+
+
+**为什么 `-1` 会变成 `255`？**我们要看计算机底层是怎么存数字的：
+
+- **数字 `-1` 的二进制（补码）**：`11111111 11111111 11111111 11111111`（全是 1）。
+  - 经过 `write` 的“窄门”截断，只剩下最后 8 位：`11111111`。
+  - **`11111111` 在无符号字节里对应的十进制就是 `255`。**
+- **数字 `256` 的二进制**：`00000000 00000000 00000001 00000000`。
+  - 经过截断，只剩下最后 8 位：`00000000`。
+  - **所以 `256` 写入的结果就是 `0`。**
+
+我们来验证一下：
+
+```java
+FileOutputStream fos = null;
+try {
+    fos = new FileOutputStream("example.txt");
+
+    fos.write(120);
+    fos.write('x');
+    fos.write(0x12345678);
+} catch (IOException e) {
+    e.printStackTrace();
+} finally {
+    if (fos != null) {
+        try {
+            fos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+然后结果就是:
+
+```java
+xxx
+```
+
+果然是 3 个 x。
+
+##### ②、**写入字节数组**：`write(byte[] b)`，代码示例：
+
+```java
+// 使用文件名称创建流对象
+FileOutputStream fos = new FileOutputStream("fos.txt");     
+// 字符串转换为字节数组
+byte[] b = "沉默王二有点帅".getBytes();
+// 写入字节数组数据
+fos.write(b);
+// 关闭资源
+fos.close();
+```
+
+
+
+##### ③、**写入指定长度字节数组**：`write(byte[] b, int off, int len)`，代码示例：
+
+```java
+// 使用文件名称创建流对象
+FileOutputStream fos = new FileOutputStream("fos.txt");     
+// 字符串转换为字节数组
+byte[] b = "abcde".getBytes();
+// 从索引2开始，2个字节。索引2是c，两个字节，也就是cd。
+fos.write(b,2,2);
+// 关闭资源
+fos.close();
+```
+
+
+
+#### 3）`FileOutputStream`实现数据追加、换行
+
+在上面的代码示例中，每次运行程序都会创建新的输出流对象，于是文件中的数据也会被清空。如果想保留目标文件中的数据，还能继续**追加新数据**，该怎么办呢？以及如何实现**换行**呢？
+
+其实很简单。
+
+我们来学习`FileOutputStream`的另外两个构造方法，如下：
+
+1、使用文件名和追加标志创建 `FileOutputStream` 对象
+
+```java
+String fileName = "example.txt";
+boolean append = true;
+FileOutputStream fos = new FileOutputStream(fileName, append);
+```
+
+以上代码使用文件名 "example.txt" 和追加标志创建一个 `FileOutputStream` 对象，将数据追加到该文件的末尾。如果文件不存在，则创建一个新文件；如果文件已经存在，则在文件末尾追加数据。
+
+
+
+2、使用文件对象和追加标志创建 `FileOutputStream` 对象
+
+```java
+File file = new File("example.txt");
+boolean append = true;
+FileOutputStream fos = new FileOutputStream(file, append);
+```
+
+以上代码使用文件对象和追加标志创建一个 `FileOutputStream` 对象，将数据追加到该文件的末尾。
+
+这两个构造方法，第二个参数中都需要传入一个boolean类型的值，`true` 表示追加数据，`false` 表示不追加也就是清空原有数据。
+
+实现数据追加代码如下：
+
+```java
+// 使用文件名称创建流对象
+FileOutputStream fos = new FileOutputStream("fos.txt",true);     
+// 字符串转换为字节数组
+byte[] b = "abcde".getBytes();
+// 写出从索引2开始，2个字节。索引2是c，两个字节，也就是cd。
+fos.write(b);
+// 关闭资源
+fos.close();
+```
+
+多次运行代码，你会发现数据在不断地追加。
+
+在 Windows 系统中，换行符号是`\r\n`，具体代码如下：
+
+```java
+String filename = "example.txt";
+FileOutputStream fos = new FileOutputStream(filename, true);  // 追加模式
+String content = "沉默王二\r\n";  // 使用回车符和换行符的组合
+fos.write(content.getBytes());
+fos.close();
+```
+
+在 macOS 系统中，换行符是 `\n`，具体代码如下：
+
+```java
+String filename = "example.txt";
+FileOutputStream fos = new FileOutputStream(filename, true);  // 追加模式
+String content = "沉默王二\n";  // 只使用换行符
+fos.write(content.getBytes());
+fos.close();
+```
+
+这里再唠一唠回车符和换行符。
+
+回车符（`\r`）和换行符（`\n`）是计算机中常见的控制字符，用于表示一行的结束或者换行的操作。它们在不同的操作系统和编程语言中的使用方式可能有所不同。
+
+在 Windows 系统中，通常使用回车符和换行符的组合（`\r\n`）来表示一行的结束。在文本文件中，每行的末尾都会以一个回车符和一个换行符的组合结束。这是由于早期的打印机和终端设备需要回车符和换行符的组合来完成一行的结束和换行操作。在 Windows 中，文本编辑器和命令行终端等工具都支持使用回车符和换行符的组合来表示一行的结束。
+
+而在 macOS 和 Linux 系统中，通常只使用换行符（`\n`）来表示一行的结束。在文本文件中，每行的末尾只有一个换行符。这是由于早期 Unix 系统中的终端设备只需要换行符来完成一行的结束和跨行操作。在 macOS 和 Linux 中，文本编辑器和终端等工具都支持使用换行符来表示一行的结束。
+
+在编程语言中，通常也会使用回车符和换行符来进行字符串的操作。例如，在 Java 中，字符串中的回车符可以用 "`\r`" 来表示，换行符可以用 "`\n`" 来表示。在通过输入输出流进行文件读写时，也需要注意回车符和换行符的使用方式和操作系统的差异。
+
+
+
+## 三、字节输入流（`InputStream`）
+
+`java.io.InputStream` 是**字节输入流**的**超类**（父类），我们来看一下它的一些共性方法：
+
+1、`close()` ：关闭此输入流并释放与此流相关的系统资源。
+
+2、`int read()`： 从输入流读取数据的下一个字节。
+
+3、`read(byte[] b)`： 该方法返回的 int 值代表的是读取了多少个字节，读到几个返回几个，读取不到返回-1
+
+
+
+### `FileInputStream`类
+
+`InputStream` 有很多子类，我们从最简单的一个子类 `FileInputStream` 开始。看名字就知道是文件输入流，用于将数据从文件中读取数据。
+
+#### 1）`FileInputStream`的构造方法
+
+1、`FileInputStream(String name)`：创建一个 `FileInputStream` 对象，并打开指定名称的文件进行读取。文件名由 name 参数指定。如果文件不存在，将会抛出 `FileNotFoundException` 异常。
+
+2、`FileInputStream(File file)`：创建一个 `FileInputStream` 对象，并打开指定的 File 对象表示的文件进行读取。
+
+代码示例如下：
+
+```java
+// 创建一个 FileInputStream 对象
+FileInputStream fis = new FileInputStream("test.txt");
+
+// 读取文件内容
+int data;
+while ((data = fis.read()) != -1) {
+    System.out.print((char) data);
+}
+
+// 关闭输入流
+fis.close();
+```
+
+#### 2）FileInputStream读取字节数据
+
+##### ①、**读取字节**：
+
+`read()`方法会读取一个字节并返回其整数表示。如果已经到达文件的末尾，则返回 -1。如果在读取时发生错误，则会抛出 IOException 异常。
+
+代码示例如下：
+
+```java
+// 创建一个 FileInputStream 对象
+FileInputStream fis = new FileInputStream("test.txt");
+
+// 读取文件内容
+int data;
+while ((data = fis.read()) != -1) {
+    System.out.print((char) data);
+}
+
+// 关闭输入流
+fis.close();
+```
+
+##### ②、**使用字节数组读取**：
+
+`read(byte[] b)` 方法会从输入流中最多读取 b.length 个字节，并将它们存储到缓冲区数组 b 中。
+
+代码示例如下：
+
+```java
+// 创建一个 FileInputStream 对象
+FileInputStream fis = new FileInputStream("test.txt");
+
+// 读取文件内容到缓冲区
+byte[] buffer = new byte[1024];
+int count;
+while ((count = fis.read(buffer)) != -1) {
+    System.out.println(new String(buffer, 0, count));
+}
+
+// 关闭输入流
+fis.close();
+```
+
+#### 3）字节流`FileInputstream`复制图片
+
+原理很简单，就是把图片信息读入到字节输入流中，再通过字节输出流写入到文件中。
+
+代码示例如下所示：
+
+```java
+// 创建一个 FileInputStream 对象以读取原始图片文件
+FileInputStream fis = new FileInputStream("original.jpg");
+
+// 创建一个 FileOutputStream 对象以写入复制后的图片文件
+FileOutputStream fos = new FileOutputStream("copy.jpg");
+
+// 创建一个缓冲区数组以存储读取的数据
+byte[] buffer = new byte[1024];
+int count;
+
+// 读取原始图片文件并将数据写入复制后的图片文件
+while ((count = fis.read(buffer)) != -1) {
+    fos.write(buffer, 0, count);
+}
+
+// 关闭输入流和输出流
+fis.close();
+fos.close();
+```
+
+上面的代码创建了一个 `FileInputStream` 对象以读取原始图片文件，并创建了一个 `FileOutputStream` 对象以写入复制后的图片文件。然后，使用 while 循环逐个读取原始图片文件中的字节，并将其写入复制后的图片文件中。最后，关闭输入流和输出流释放资源。
+
+
+
+#### 小结
+
+`InputStream` 是字节输入流的抽象类，它定义了读取字节数据的方法，如 `read()`、`read(byte[] b)`、`read(byte[] b, int off, int len)` 等。`OutputStream` 是字节输出流的抽象类，它定义了写入字节数据的方法，如 `write(int b)`、`write(byte[] b)`、`write(byte[] b, int off, int len)` 等。这两个抽象类是字节流的基础。
+
+`FileInputStream` 是从文件中读取字节数据的流，它继承自 `InputStream`。`FileOutputStream` 是将字节数据写入文件的流，它继承自 `OutputStream`。这两个类是字节流最常用的实现类之一。
