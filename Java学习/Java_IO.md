@@ -2705,3 +2705,310 @@ OutputStreamWriter 类的常用方法包括：
 - `close()`：关闭输出流。
 
 在使用转换流时，需要指定正确的字符集编码方式，否则可能会导致数据读取或写入出现乱码。
+
+
+
+# Ⅶ 序列流
+
+Java 的序列流（ObjectInputStream 和 ObjectOutputStream）是一种可以将 Java 对象序列化和反序列化的流。
+
+序列化是指将一个对象转换为一个字节序列（包含`对象的数据`、`对象的类型`和`对象中存储的属性`等信息），以便在网络上传输或保存到文件中，或者在程序之间传递。在 Java 中，序列化通过实现 java.io.Serializable 接口来实现，只有实现了 [Serializable 接口](https://javabetter.cn/io/Serializbale.html)的对象才能被序列化。
+
+反序列化是指将一个字节序列转换为一个对象，以便在程序中使用。
+
+你可以把 Java 对象想象成一架复杂的**乐高积木模型**（在内存里占了一块地方，有形状、有连接关系）。
+
+- **序列化**：就像是把这架乐高拆成一块块零件，按顺序装进一个窄窄的快递盒（字节流）里。
+- **ObjectOutputStream**：就是那个负责拆解积木并打包的**装箱机器**。
+
+
+
+## 01、`ObjectOutputStream`
+
+`java.io.ObjectOutputStream` 继承自 OutputStream 类，因此可以将序列化后的字节序列写入到文件、网络等输出流中。
+
+来看 ObjectOutputStream 的构造方法： `ObjectOutputStream(OutputStream out)`
+
+该构造方法接收一个 `OutputStream` 对象作为参数，用于将序列化后的字节序列输出到指定的输出流中。例如：
+
+```java
+FileOutputStream fos = new FileOutputStream("file.txt");
+ObjectOutputStream oos = new ObjectOutputStream(fos);
+```
+
+
+
+一个对象要想序列化，必须满足两个条件:
+
+- 该类必须实现[`java.io.Serializable` 接口](https://javabetter.cn/io/Serializbale.html)，否则会抛出`NotSerializableException` 。
+- 该类的所有字段都必须是可序列化的。如果一个字段不需要序列化，则需要使用[`transient` 关键字](https://javabetter.cn/io/transient.html)进行修饰。
+
+
+
+是的不是所有的对象都有资格被打包,java设计了两个门槛:
+
+**门槛 A：必须持有“许可证” (`Serializable`)**
+
+你提到的 `java.io.Serializable` 是一个**标记接口**。它里面一个方法都没有，它的存在纯粹是为了告诉 JVM：“我允许这个类的对象被序列化。”
+
+- **如果不实现它**：你会收到一个冷酷的 `NotSerializableException`。
+- **为什么要这么设计？**：因为有些对象代表了特定的系统资源（比如线程 Thread、Socket 链接），这些东西就像“活物”，是没法被冷冻保存的。
+
+
+
+**门槛 B：全家都要有许可证**
+
+如果 `Employee` 类里包含了一个 `Department` 对象，那么 `Department` 也必须实现 `Serializable` 接口。否则，打包机器在处理到一半时发现零件坏了，整个打包过程依然会失败。
+
+> `transient`（瞬态）是序列化里的**“隐身斗篷”**。
+>
+> **安全性**：比如用户的 `password`。你不希望把银行密码明文存到硬盘文件里。
+>
+> **没必要**：比如某些计算出来的临时结果。
+>
+> **不能序列化**：如果某个字段引用的类没实现序列化接口，你又不想改那个类，就只能给它加 `transient`。
+
+使用示例如下：
+
+```java
+public class Employee implements Serializable {
+    public String name;
+    public String address;
+    public transient int age; // transient瞬态修饰成员,不会被序列化
+}
+```
+
+接下来，来聊聊 `writeObject (Object obj)` 方法，该方法是 ObjectOutputStream 类中用于将对象序列化成字节序列并输出到输出流中的方法，可以处理对象之间的引用关系、继承关系、静态字段和 transient 字段。
+
+```java
+public class ObjectOutputStreamDemo {
+    public static void main(String[] args) {
+        Person person = new Person("沉默王二", 20);
+        try {
+            FileOutputStream fos = new FileOutputStream("logs/person.dat");
+            ObjectOutputStream oos = new ObjectOutputStream(fos);
+            oos.writeObject(person);
+            oos.close();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+}
+class Person implements Serializable {
+    private String name;
+    private int age;
+
+    public Person(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+}
+```
+
+上面的代码中，首先创建了一个 Person 对象，然后使用 FileOutputStream 和 ObjectOutputStream 将 Person 对象序列化并输出到 person.dat 文件中。在 Person 类中，实现了 Serializable 接口，表示该类可以进行对象序列化。
+
+在开始打包之前，`writeObject` 首先会检查 `person` 这个对象。
+
+- **验证接口**：它会看 `Person` 类是否实现了 `Serializable` 接口。
+- **抛出异常**：如果没有实现，它会立刻罢工，甩给你一个 `NotSerializableException`。
+- **获取元数据**：它会提取类的名字、字段名、类型以及那个隐藏的 `serialVersionUID`（版本号）。
+
+
+
+ `writeObject` 最强大的地方在于引用与继承：
+
+- **递归打包（引用关系）**： 如果 `Person` 类里还有一个 `Address` 对象字段，`writeObject` 会自动停下来，先去把 `Address` 对象也序列化了，然后再回来继续。它能处理一整棵“对象树”。
+- **循环引用检测**： 如果 A 引用了 B，B 又引用了 A。`writeObject` 非常聪明，它会给每个对象分配一个“句柄”（Handle）。如果发现这个对象已经写过了，它就只写一个“编号”，而不会陷入死循环。
+- **继承关系**： 如果 `Person` 继承自 `Animal`，它会沿着继承链往上走，把父类中可序列化的状态也保存下来。
+
+
+
+## 02、`ObjectInputStream`
+
+我们之前提到过`ObjectOutputStream`是拆解那么,那么 **`ObjectInputStream` **就是负责把积木重新拼装还原。
+
+`ObjectInputStream` 可以读取 `ObjectOutputStream` 写入的字节流，并将其反序列化为相应的对象（包含`对象的数据`、`对象的类型`和`对象中存储的属性`等信息）。
+
+说简单点就是，序列化之前是什么样子，反序列化后就是什么样子。
+
+来看一下构造方法：`ObjectInputStream(InputStream in)` ： 创建一个指定 InputStream 的 ObjectInputStream。
+
+其中，`ObjectInputStream` 的 `readObject` 方法用来读取指定文件中的对象，示例如下：
+
+```java
+String filename = "logs/person.dat"; // 待反序列化的文件名
+try (FileInputStream fileIn = new FileInputStream(filename);
+     ObjectInputStream in = new ObjectInputStream(fileIn)) {
+     // 从指定的文件输入流中读取对象并反序列化
+     Object obj = in.readObject();
+     // 将反序列化后的对象强制转换为指定类型
+     Person p = (Person) obj;
+     // 打印反序列化后的对象信息
+     System.out.println("Deserialized Object: " + p);
+} catch (IOException | ClassNotFoundException e) {
+     e.printStackTrace();
+}
+```
+
+我们首先指定了待反序列化的文件名（前面通过 `ObjectOutputStream` 序列化后的文件），然后创建了一个 `FileInputStream` 对象和一个 `ObjectInputStream` 对象。接着我们调用 `ObjectInputStream` 的 `readObject` 方法来读取指定文件中的对象，并将其强制转换为 Person 类型。最后我们打印了反序列化后的对象信息。
+
+
+
+
+
+### ①`readObject()` :复活吧,我的爱人!
+
+代码中最重要的动作就是 `Object obj = in.readObject();`。这个方法执行时，JVM 在后台忙得不可开交：
+
+1. **读取“说明书”**：它先读取文件开头的类描述信息，看看这个对象到底属于哪个类（比如 `Person`）。
+2. **寻找类文件**：它会在当前的 **Classpath**（代码库）里疯狂寻找 `Person.class`。如果找不到，它就会摔门而出，抛出 `ClassNotFoundException`。
+3. **克隆数据**：它根据文件里的字节数据，把属性值（name, address）一个个填回内存。
+
+
+
+### ②一个震惊且男默女泪的事实：不调用构造方法！
+
+这是初学者最容易忽略的一点：**反序列化创建对象时，并不会调用你的构造方法！**
+
+- **常规做法**：`new Person("二哥", 20)` 会执行构造函数里的逻辑（比如初始化某些变量）。
+- **反序列化**：它是直接通过“上帝视角”从字节码中恢复状态。
+- **结果**：如果你在构造方法里写了一些逻辑（比如 `System.out.println("构造函数被调用了")`），在反序列化时，**这行字压根不会出现**。对象就像是凭空变出来的“克隆人”。
+
+
+
+### ③为什么要强制转型 `(Person) obj`？
+
+你会发现 `readObject()` 返回的类型是 **`Object`**。
+
+- **原因**：`ObjectInputStream` 很有礼貌，但它很健忘。它能读出任何对象，但它不确定读出来的是 `Person` 还是 `Dog`。
+- **解决**：你作为代码的主人，必须手动加上 `(Person)` 进行强转，告诉 Java：“放心，我知道里面装的是什么。”
+
+
+
+### ④`ClassNotFoundException`
+
+在 `catch` 块里看到了两个异常：
+
+1. **`IOException`**：文件丢了、硬盘坏了、或者是读取过程中断电了。
+2. **`ClassNotFoundException`**：文件还在，但你的程序里把 `Person` 这个类给删了，或者类名改了。这时候 Java 就像拿到了乐高积木却没看懂图纸一样，无法复原。
+
+### ⑤transient后来呢?
+
+还记得之前给 `age` 加的 `transient` 吗？
+
+- **序列化时**：`age` 被留在了原地，没进文件。
+- **反序列化后**：你会发现得到的 `Person` 对象，`name` 依然是“沉默王二”，但 **`age` 变成了 0**。
+- **结论**：瞬态字段不会被复活，它们会回到默认值（int 是 0，对象引用是 null）。
+
+
+
+| **特性**     | **ObjectOutputStream (打包)** | **ObjectInputStream (复原)** |
+| ------------ | ----------------------------- | ---------------------------- |
+| **动作**     | `writeObject(obj)`            | `readObject()`               |
+| **返回值**   | `void`                        | `Object` (需要强转)          |
+| **前提条件** | 类必须实现 `Serializable`     | 类文件必须存在，且版本号一致 |
+| **结果**     | 数据落地成二进制文件          | 内存中重新出现对象           |
+
+
+
+## 03、Kryo
+
+实际开发中，很少使用 JDK 自带的序列化和反序列化，这是因为：
+
+- 可移植性差：Java 特有的，无法跨语言进行序列化和反序列化。
+- 性能差：序列化后的字节体积大，增加了传输/保存成本。
+- 安全问题：攻击者可以通过构造恶意数据来实现远程代码执行，从而对系统造成严重的安全威胁。相关阅读：[Java 反序列化漏洞之殇](https://cryin.github.io/blog/secure-development-java-deserialization-vulnerability/) 。
+
+Kryo 是一个优秀的 Java 序列化和反序列化库，具有高性能、高效率和易于使用和扩展等特点，有效地解决了 JDK 自带的序列化机制的痛点。
+
+> GitHub 地址：https://github.com/EsotericSoftware/kryo
+
+使用示例：
+
+第一步，在 pom.xml 中引入依赖。
+
+```xml
+<!-- 引入 Kryo 序列化工具 -->
+<dependency>
+     <groupId>com.esotericsoftware</groupId>
+     <artifactId>kryo</artifactId>
+     <version>5.4.0</version>
+</dependency>
+```
+
+第二步，创建一个 Kryo 对象，并使用 `register()` 方法将对象进行注册。然后，使用 `writeObject()` 方法将 Java 对象序列化为二进制流，再使用 `readObject()` 方法将二进制流反序列化为 Java 对象。最后，输出反序列化后的 Java 对象。
+
+
+
+```java
+public class KryoDemo {
+    public static void main(String[] args) throws FileNotFoundException {
+        Kryo kryo = new Kryo();
+        kryo.register(KryoParam.class);
+
+        KryoParam object = new KryoParam("沉默王二", 123);
+
+        Output output = new Output(new FileOutputStream("logs/kryo.bin"));
+        kryo.writeObject(output, object);
+        output.close();
+
+        Input input = new Input(new FileInputStream("logs/kryo.bin"));
+        KryoParam object2 = kryo.readObject(input, KryoParam.class);
+        System.out.println(object2);
+        input.close();
+    }
+}
+
+class KryoParam {
+    private String name;
+    private int age;
+
+    public KryoParam() {
+    }
+
+    public KryoParam(String name, int age) {
+        this.name = name;
+        this.age = age;
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public void setName(String name) {
+        this.name = name;
+    }
+
+    public int getAge() {
+        return age;
+    }
+
+    public void setAge(int age) {
+        this.age = age;
+    }
+
+    @Override
+    public String toString() {
+        return "KryoParam{" +
+                "name='" + name + '\'' +
+                ", age=" + age +
+                '}';
+    }
+}
+```
+
+
+
+## 04、小结
+
+本节我们介绍了 Java 的序列化机制，并推荐了一款高性能的 Java 类库 Kryo 来取代 JDK 自带的序列化机制，已经在 Twitter、Groupon、Yahoo 以及多个著名开源项目（如 Hive、Storm）中广泛使用。
+
+以上，希望能帮助到大家。
